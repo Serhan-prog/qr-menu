@@ -35,7 +35,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("qr_menu_token", auth.token())
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSecure ? "None" : "Lax")
                 .path("/")
                 .maxAge(expirationMinutes * 60)
                 .build();
@@ -48,7 +48,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("qr_menu_token", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSecure ? "None" : "Lax")
                 .path("/")
                 .maxAge(0)
                 .build();
