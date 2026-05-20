@@ -19,6 +19,7 @@ body {
   margin: 0;
   min-width: 320px;
   background: #f3f6f4;
+  overflow-x: hidden;
 }
 
 button,
@@ -49,11 +50,12 @@ textarea,
 
 .ant-table-wrapper {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
 }
 
-.ant-table {
-  min-width: 760px;
+.ant-table-wrapper .ant-table {
+  min-width: 0;
 }
 
 .ant-card,
@@ -320,6 +322,11 @@ textarea,
 .admin-layout {
   min-height: 100vh;
   background: #eef3f1;
+  overflow-x: hidden;
+}
+
+.admin-layout .ant-layout {
+  min-width: 0;
 }
 
 .admin-sider {
@@ -429,8 +436,22 @@ textarea,
   margin: 0;
 }
 
+.admin-header > div:first-child {
+  min-width: 0;
+}
+
+.admin-header .ant-typography {
+  overflow-wrap: anywhere;
+}
+
+.admin-header-actions {
+  justify-content: flex-end;
+}
+
 .admin-content {
   padding: clamp(14px, 3vw, 28px);
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .admin-page-title {
@@ -459,6 +480,16 @@ textarea,
   border-radius: 8px;
   border: 1px solid #dde6e3;
   overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+.mobile-admin-menu .ant-menu-overflow {
+  flex-wrap: nowrap;
+}
+
+.mobile-admin-menu .ant-menu-item {
+  flex: 0 0 auto;
 }
 
 .stats-grid {
@@ -473,6 +504,7 @@ textarea,
   border: 1px solid #dce8e5;
   border-radius: 8px;
   box-shadow: 0 10px 26px rgba(16, 37, 34, 0.05);
+  min-width: 0;
 }
 
 .metric-card .ant-statistic-title {
@@ -507,6 +539,8 @@ textarea,
 
 .responsive-row {
   width: 100%;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 .request-card {
@@ -636,12 +670,19 @@ textarea,
     flex-direction: column;
   }
 
-  .admin-header .ant-space {
+  .admin-header-actions {
     width: 100%;
+    justify-content: flex-start;
   }
 
-  .admin-header .ant-btn {
-    flex: 1;
+  .admin-header-actions .ant-space-item {
+    flex: 1 1 auto;
+  }
+
+  .admin-header-actions .ant-btn,
+  .admin-header-actions .ant-tag {
+    width: 100%;
+    justify-content: center;
   }
 
   .admin-page-title {
@@ -745,19 +786,123 @@ textarea,
   }
 
   .admin-content {
-    padding: 12px;
+    padding: 10px;
   }
 
   .admin-header {
-    padding: 14px;
+    padding: 12px;
+    min-height: 0;
+  }
+
+  .admin-header h3 {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .admin-header > div:first-child > span.ant-typography {
+    display: none;
+  }
+
+  .admin-header-actions {
+    gap: 6px !important;
+  }
+
+  .admin-header-actions .ant-space-item {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+
+  .admin-header-actions .ant-space-item:first-child {
+    flex-basis: 100%;
+  }
+
+  .admin-header-actions .ant-btn {
+    padding-inline: 8px;
+  }
+
+  .admin-page-title {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .admin-page-title h2 {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .admin-title-tags {
+    gap: 6px !important;
+  }
+
+  .stats-grid {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .metric-card .ant-card-body {
+    padding: 12px;
+  }
+
+  .metric-card .ant-statistic-title {
+    font-size: 12px;
+  }
+
+  .metric-card .ant-statistic-content {
+    font-size: 20px;
+  }
+
+  .section-card .ant-card-head {
+    min-height: 48px;
+    padding: 0 12px;
+  }
+
+  .section-card .ant-card-head-title {
+    font-size: 15px;
+  }
+
+  .section-card .ant-card-body {
+    padding: 12px;
+  }
+
+  .mobile-admin-menu {
+    margin-bottom: 10px;
+  }
+
+  .mobile-admin-menu .ant-menu-item {
+    padding-inline: 12px;
   }
 
   .mobile-admin-menu .ant-menu-title-content {
     white-space: nowrap;
   }
 
+  .request-card {
+    min-height: 0;
+  }
+
+  .request-card .ant-card-body {
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .request-card h4,
+  .kitchen-card h3 {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .kitchen-card {
+    min-height: 0;
+  }
+
+  .kitchen-card .ant-card-body {
+    min-height: 0;
+    padding: 14px;
+  }
+
   .kitchen-item {
     grid-template-columns: 38px minmax(0, 1fr);
+    padding: 8px;
   }
 
   .kitchen-item .ant-typography {
@@ -767,5 +912,27 @@ textarea,
   .request-actions .ant-btn,
   .kitchen-actions .ant-btn {
     flex: 1 1 100%;
+  }
+
+  .ant-table-wrapper {
+    margin-inline: -2px;
+  }
+
+  .ant-table-wrapper .ant-table {
+    font-size: 12px;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 8px !important;
+  }
+
+  .ant-modal {
+    max-width: calc(100vw - 20px);
+  }
+
+  .ant-modal .ant-modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
   }
 }

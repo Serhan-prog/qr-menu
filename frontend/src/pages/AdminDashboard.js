@@ -297,6 +297,8 @@ function AdminDashboard() {
       children: (
         <DataSection title="Masalar" onAdd={() => openModal('table')}>
           <Table
+            size="middle"
+            scroll={{ x: 760 }}
             rowKey="id"
             loading={loading}
             dataSource={tables}
@@ -323,6 +325,8 @@ function AdminDashboard() {
       children: (
         <DataSection title="Kategoriler" onAdd={() => openModal('category')}>
           <Table
+            size="middle"
+            scroll={{ x: 640 }}
             rowKey="id"
             loading={loading}
             dataSource={categories}
@@ -344,6 +348,8 @@ function AdminDashboard() {
       children: (
         <DataSection title="Ürünler" onAdd={() => openModal('product')}>
           <Table
+            size="middle"
+            scroll={{ x: 640 }}
             rowKey="id"
             loading={loading}
             dataSource={products}
@@ -424,7 +430,7 @@ function AdminDashboard() {
             <Title level={3}>{restaurant?.name || 'Semua Restorant'}</Title>
             <Text>{user?.fullName || 'Admin'} - Tek ekranda mutfak, sipariş, masa, QR ve müşteri istekleri</Text>
           </div>
-          <Space>
+          <Space className="admin-header-actions" wrap>
             <Tag color={realtimeStatus === 'connected' ? 'green' : 'default'}>
               {realtimeStatus === 'connected' ? 'Canlı bağlantı açık' : 'Canlı bağlantı kapalı'}
             </Tag>
@@ -452,7 +458,7 @@ function AdminDashboard() {
               <Text className="page-kicker">Canlı Operasyon</Text>
               <Title level={2}>{tabs.find((tab) => tab.key === activeTab)?.label}</Title>
             </div>
-            <Space wrap>
+            <Space className="admin-title-tags" wrap>
               <Tag icon={<HomeOutlined />} color="green">{tables.length} masa</Tag>
               <Tag icon={<ProfileOutlined />} color="blue">{servedOrders} servis edildi</Tag>
             </Space>
@@ -508,12 +514,16 @@ function AdminDashboard() {
 function OrdersTable({ loading, orders, onStatusChange }) {
   return (
     <Table
+      size="middle"
+      scroll={{ x: 760 }}
       rowKey="id"
       loading={loading}
       dataSource={orders}
       expandable={{
         expandedRowRender: (order) => (
           <Table
+            size="small"
+            scroll={{ x: 560 }}
             rowKey="id"
             pagination={false}
             dataSource={order.items}
