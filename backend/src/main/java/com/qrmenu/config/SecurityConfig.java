@@ -33,10 +33,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .ignoringRequestMatchers(
-                                "/api/auth/login",
-                                "/api/orders",
-                                "/api/waiter-calls",
-                                "/api/bill-requests"
+                                "/api/**"
                         )
                 )
                 .cors(cors -> {})
