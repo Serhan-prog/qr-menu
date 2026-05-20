@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { clearAuth } from '../utils/auth.js';
+import { clearAuth, getToken } from '../utils/auth.js';
 
 const defaultApiBaseUrl = import.meta.env.DEV ? 'http://localhost:8080' : '';
 
@@ -11,6 +11,14 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+api.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 api.interceptors.response.use(
