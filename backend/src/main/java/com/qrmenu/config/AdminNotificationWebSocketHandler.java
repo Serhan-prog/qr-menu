@@ -2,7 +2,7 @@ package com.qrmenu.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qrmenu.dto.AdminNotification;
-import com.qrmenu.service.JwtService;
+import com.qrmenu.service.WebSocketTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -22,7 +22,7 @@ public class AdminNotificationWebSocketHandler extends TextWebSocketHandler {
     private static final String RESTAURANT_ID_ATTRIBUTE = "restaurantId";
 
     private final ObjectMapper objectMapper;
-    private final JwtService jwtService;
+    private final WebSocketTicketService webSocketTicketService;
     private final Map<Long, Set<WebSocketSession>> sessionsByRestaurant = new ConcurrentHashMap<>();
 
     @Override
@@ -30,22 +30,14 @@ public class AdminNotificationWebSocketHandler extends TextWebSocketHandler {
         try {
             URI uri = session.getUri();
             var params = UriComponentsBuilder.fromUri(uri).build().getQueryParams();
-            String token = params.getFirst("token");
-            String restaurantIdParam = params.getFirst("restaurantId");
+            String ticket = params.getFirst("ticket");
 
-            if (token == null || restaurantIdParam == null) {
-                session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Missing token or restaurantId"));
+            if (ticket == null) {
+                session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Missing websocket ticket"));
                 return;
             }
 
-            String email = jwtService.extractEmail(token);
-            Long tokenRestaurantId = jwtService.extractRestaurantId(token);
-            Long restaurantId = Long.valueOf(restaurantIdParam);
-
-            if (!jwtService.isValid(token, email) || !restaurantId.equals(tokenRestaurantId)) {
-                session.close(CloseStatus.POLICY_VIOLATION.withReason("Invalid token"));
-                return;
-            }
+            Long restaurantId = webSocketTicketService.consume(ticket);
 
             session.getAttributes().put(RESTAURANT_ID_ATTRIBUTE, restaurantId);
             sessionsByRestaurant.computeIfAbsent(restaurantId, ignored -> ConcurrentHashMap.newKeySet()).add(session);

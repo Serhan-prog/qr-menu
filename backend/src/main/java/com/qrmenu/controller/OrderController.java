@@ -33,6 +33,11 @@ public class OrderController {
         return orderService.findAll(restaurantId, tableId);
     }
 
+    @GetMapping("/track/{trackingCode}")
+    public OrderResponse findByTrackingCode(@PathVariable String trackingCode) {
+        return orderService.findByTrackingCode(trackingCode);
+    }
+
     @GetMapping("/{id}")
     public OrderResponse findById(@PathVariable Long id) {
         return orderService.findById(id);

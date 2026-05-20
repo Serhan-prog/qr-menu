@@ -17,11 +17,16 @@ import java.util.List;
 public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final RestaurantService restaurantService;
+    private final AuthContextService authContextService;
 
     @Transactional(readOnly = true)
     public List<CategoryResponse> findAll(Long restaurantId) {
+        Long scopedRestaurantId = authContextService.currentRestaurantId();
+        if (restaurantId != null) {
+            authContextService.assertRestaurantAccess(restaurantId);
+        }
         List<Category> categories = restaurantId == null
-                ? categoryRepository.findAll()
+                ? categoryRepository.findByRestaurantIdOrderBySortOrderAscNameAsc(scopedRestaurantId)
                 : categoryRepository.findByRestaurantIdOrderBySortOrderAscNameAsc(restaurantId);
         return categories.stream().map(this::toResponse).toList();
     }
@@ -34,11 +39,14 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public CategoryResponse findById(Long id) {
-        return toResponse(getEntity(id));
+        Category category = getEntity(id);
+        authContextService.assertRestaurantAccess(category.getRestaurant().getId());
+        return toResponse(category);
     }
 
     @Transactional
     public CategoryResponse create(CategoryRequest request) {
+        authContextService.assertRestaurantAccess(request.restaurantId());
         Category category = new Category();
         apply(category, request);
         return toResponse(categoryRepository.save(category));
@@ -46,14 +54,18 @@ public class CategoryService {
 
     @Transactional
     public CategoryResponse update(Long id, CategoryRequest request) {
+        authContextService.assertRestaurantAccess(request.restaurantId());
         Category category = getEntity(id);
+        authContextService.assertRestaurantAccess(category.getRestaurant().getId());
         apply(category, request);
         return toResponse(category);
     }
 
     @Transactional
     public void delete(Long id) {
-        categoryRepository.delete(getEntity(id));
+        Category category = getEntity(id);
+        authContextService.assertRestaurantAccess(category.getRestaurant().getId());
+        category.setActive(false);
     }
 
     private void apply(Category category, CategoryRequest request) {

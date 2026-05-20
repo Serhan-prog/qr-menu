@@ -12,6 +12,7 @@ public record OrderResponse(
         Long tableId,
         Integer tableNumber,
         String tableCode,
+        String trackingCode,
         OrderStatus status,
         String note,
         BigDecimal totalAmount,

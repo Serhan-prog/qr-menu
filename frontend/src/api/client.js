@@ -1,19 +1,16 @@
 import axios from 'axios';
-import { clearAuth, getToken } from '../utils/auth.js';
+import { clearAuth } from '../utils/auth.js';
+
+const defaultApiBaseUrl = import.meta.env.DEV ? 'http://localhost:8080' : '';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl,
+  withCredentials: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-api.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
 });
 
 api.interceptors.response.use(

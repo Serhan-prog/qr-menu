@@ -15,6 +15,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,7 +27,10 @@ import java.util.List;
 @Getter
 @Setter
 @Entity
-@Table(name = "orders")
+@Table(
+        name = "orders",
+        uniqueConstraints = @UniqueConstraint(name = "uk_orders_tracking_code", columnNames = "tracking_code")
+)
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,6 +50,9 @@ public class Order {
 
     @Column(length = 1000)
     private String note;
+
+    @Column(name = "tracking_code", nullable = false, unique = true, updatable = false, length = 64)
+    private String trackingCode;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;

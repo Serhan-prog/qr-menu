@@ -16,10 +16,13 @@ public class RootController {
                 "1.0.0",
                 List.of(
                         "/api/restaurants",
+                        "/api/restaurants/current",
+                        "/api/auth/ws-ticket",
                         "/api/tables",
                         "/api/categories",
                         "/api/products",
                         "/api/orders",
+                        "/api/orders/track/{trackingCode}",
                         "/api/waiter-calls",
                         "/api/bill-requests",
                         "/api/menu/table/{tableCode}"

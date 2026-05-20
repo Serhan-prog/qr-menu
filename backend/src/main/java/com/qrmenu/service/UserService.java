@@ -21,10 +21,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final RestaurantService restaurantService;
     private final PasswordEncoder passwordEncoder;
+    private final AuthContextService authContextService;
 
     @Transactional(readOnly = true)
     public List<UserResponse> findAll() {
-        return userRepository.findAll().stream().map(this::toResponse).toList();
+        return userRepository.findByRestaurantIdOrderByFullNameAsc(authContextService.currentRestaurantId())
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -35,11 +39,14 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserResponse findById(Long id) {
-        return toResponse(getEntity(id));
+        User user = getEntity(id);
+        authContextService.assertRestaurantAccess(user.getRestaurant().getId());
+        return toResponse(user);
     }
 
     @Transactional
     public UserResponse create(UserRequest request) {
+        authContextService.assertRestaurantAccess(request.restaurantId());
         if (userRepository.existsByEmail(request.email())) {
             throw new BadRequestException("Email already exists");
         }
@@ -50,7 +57,9 @@ public class UserService {
 
     @Transactional
     public UserResponse update(Long id, UserRequest request) {
+        authContextService.assertRestaurantAccess(request.restaurantId());
         User user = getEntity(id);
+        authContextService.assertRestaurantAccess(user.getRestaurant().getId());
         userRepository.findByEmail(request.email())
                 .filter(existing -> !existing.getId().equals(id))
                 .ifPresent(existing -> {
@@ -62,7 +71,12 @@ public class UserService {
 
     @Transactional
     public void delete(Long id) {
-        userRepository.delete(getEntity(id));
+        User user = getEntity(id);
+        authContextService.assertRestaurantAccess(user.getRestaurant().getId());
+        if (authContextService.currentUser().map(current -> current.getId().equals(id)).orElse(false)) {
+            throw new BadRequestException("Current user cannot be deleted");
+        }
+        user.setActive(false);
     }
 
     private void apply(User user, UserRequest request) {
@@ -70,7 +84,7 @@ public class UserService {
         user.setRestaurant(restaurant);
         user.setEmail(request.email());
         user.setFullName(request.fullName());
-        user.setPasswordHash(passwordEncoder.encode(request.passwordHash()));
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setRole(request.role() == null ? UserRole.ADMIN : request.role());
         if (request.active() != null) {
             user.setActive(request.active());

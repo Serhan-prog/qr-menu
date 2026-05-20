@@ -110,7 +110,9 @@ function Menu() {
 
   const refreshOrders = async () => {
     try {
-      const freshOrders = await Promise.all(orders.map((order) => qrMenuApi.getOrder(order.id)));
+      const freshOrders = await Promise.all(
+        orders.map((order) => qrMenuApi.getOrderByTrackingCode(order.trackingCode))
+      );
       setOrders(freshOrders);
     } catch {
       // Polling sessiz kalır; ana işlemler message ile bildirilir.

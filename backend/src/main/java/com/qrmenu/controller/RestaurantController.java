@@ -29,6 +29,11 @@ public class RestaurantController {
         return restaurantService.findAll();
     }
 
+    @GetMapping("/current")
+    public RestaurantResponse current() {
+        return restaurantService.current();
+    }
+
     @GetMapping("/{id}")
     public RestaurantResponse findById(@PathVariable Long id) {
         return restaurantService.findById(id);

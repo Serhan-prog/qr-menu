@@ -111,8 +111,7 @@ function AdminDashboard() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const restaurantList = await qrMenuApi.getRestaurants();
-      const currentRestaurant = restaurantList[0] || null;
+      const currentRestaurant = await qrMenuApi.getCurrentRestaurant();
       setRestaurant(currentRestaurant);
       if (currentRestaurant) {
         await loadScopedData(currentRestaurant.id);
@@ -249,7 +248,12 @@ function AdminDashboard() {
     ),
   });
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await qrMenuApi.logout();
+    } catch {
+      // Local auth state is cleared even if the network request fails.
+    }
     clearAuth();
     message.success('Çıkış yapıldı');
     navigate('/login');

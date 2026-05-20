@@ -40,7 +40,6 @@ function Login() {
           <Form
             layout="vertical"
             onFinish={onFinish}
-            initialValues={{ email: 'admin@qrmenu.local', password: 'admin123' }}
           >
             <Form.Item label="E-posta" name="email" rules={[{ required: true, message: 'E-posta zorunlu' }]}>
               <Input size="large" prefix={<MailOutlined />} placeholder="admin@qrmenu.local" />

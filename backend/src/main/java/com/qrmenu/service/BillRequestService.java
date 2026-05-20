@@ -19,11 +19,16 @@ public class BillRequestService {
     private final BillRequestRepository billRequestRepository;
     private final TableService tableService;
     private final AdminNotificationService adminNotificationService;
+    private final AuthContextService authContextService;
 
     @Transactional(readOnly = true)
     public List<BillRequestResponse> findAll(Long restaurantId) {
+        Long scopedRestaurantId = authContextService.currentRestaurantId();
+        if (restaurantId != null) {
+            authContextService.assertRestaurantAccess(restaurantId);
+        }
         List<BillRequest> requests = restaurantId == null
-                ? billRequestRepository.findAll()
+                ? billRequestRepository.findByRestaurantIdOrderByCreatedAtDesc(scopedRestaurantId)
                 : billRequestRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId);
         return requests.stream().map(this::toResponse).toList();
     }
@@ -49,6 +54,7 @@ public class BillRequestService {
     @Transactional
     public BillRequestResponse updateStatus(Long id, BillRequestStatus status) {
         BillRequest billRequest = getEntity(id);
+        authContextService.assertRestaurantAccess(billRequest.getRestaurant().getId());
         billRequest.setStatus(status);
         return toResponse(billRequest);
     }

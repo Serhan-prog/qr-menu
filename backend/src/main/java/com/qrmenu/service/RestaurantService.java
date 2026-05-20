@@ -3,6 +3,7 @@ package com.qrmenu.service;
 import com.qrmenu.dto.RestaurantRequest;
 import com.qrmenu.dto.RestaurantResponse;
 import com.qrmenu.entity.Restaurant;
+import com.qrmenu.exception.BadRequestException;
 import com.qrmenu.exception.ResourceNotFoundException;
 import com.qrmenu.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +16,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RestaurantService {
     private final RestaurantRepository restaurantRepository;
+    private final AuthContextService authContextService;
 
     @Transactional(readOnly = true)
     public List<RestaurantResponse> findAll() {
-        return restaurantRepository.findAll().stream().map(this::toResponse).toList();
+        return List.of(current());
+    }
+
+    @Transactional(readOnly = true)
+    public RestaurantResponse current() {
+        return toResponse(getEntity(authContextService.currentRestaurantId()));
     }
 
     @Transactional(readOnly = true)
@@ -29,11 +36,17 @@ public class RestaurantService {
 
     @Transactional(readOnly = true)
     public RestaurantResponse findById(Long id) {
+        authContextService.assertRestaurantAccess(id);
         return toResponse(getEntity(id));
     }
 
     @Transactional
     public RestaurantResponse create(RestaurantRequest request) {
+        throw new BadRequestException("Restaurant creation is disabled in single-restaurant production mode");
+    }
+
+    @Transactional
+    public RestaurantResponse createInternal(RestaurantRequest request) {
         Restaurant restaurant = new Restaurant();
         apply(restaurant, request);
         return toResponse(restaurantRepository.save(restaurant));
@@ -41,6 +54,7 @@ public class RestaurantService {
 
     @Transactional
     public RestaurantResponse update(Long id, RestaurantRequest request) {
+        authContextService.assertRestaurantAccess(id);
         Restaurant restaurant = getEntity(id);
         apply(restaurant, request);
         return toResponse(restaurant);
@@ -48,6 +62,11 @@ public class RestaurantService {
 
     @Transactional
     public void delete(Long id) {
+        throw new BadRequestException("Restaurant deletion is disabled in production mode");
+    }
+
+    @Transactional
+    public void deleteInternal(Long id) {
         Restaurant restaurant = getEntity(id);
         restaurantRepository.delete(restaurant);
     }

@@ -20,16 +20,20 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final RestaurantService restaurantService;
     private final CategoryService categoryService;
+    private final AuthContextService authContextService;
 
     @Transactional(readOnly = true)
     public List<ProductResponse> findAll(Long restaurantId, Long categoryId) {
+        Long scopedRestaurantId = authContextService.currentRestaurantId();
         List<Product> products;
         if (categoryId != null) {
+            authContextService.assertRestaurantAccess(categoryService.getEntity(categoryId).getRestaurant().getId());
             products = productRepository.findByCategoryIdOrderBySortOrderAscNameAsc(categoryId);
         } else if (restaurantId != null) {
+            authContextService.assertRestaurantAccess(restaurantId);
             products = productRepository.findByRestaurantIdOrderBySortOrderAscNameAsc(restaurantId);
         } else {
-            products = productRepository.findAll();
+            products = productRepository.findByRestaurantIdOrderBySortOrderAscNameAsc(scopedRestaurantId);
         }
         return products.stream().map(this::toResponse).toList();
     }
@@ -42,11 +46,14 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductResponse findById(Long id) {
-        return toResponse(getEntity(id));
+        Product product = getEntity(id);
+        authContextService.assertRestaurantAccess(product.getRestaurant().getId());
+        return toResponse(product);
     }
 
     @Transactional
     public ProductResponse create(ProductRequest request) {
+        authContextService.assertRestaurantAccess(request.restaurantId());
         Product product = new Product();
         apply(product, request);
         return toResponse(productRepository.save(product));
@@ -54,14 +61,18 @@ public class ProductService {
 
     @Transactional
     public ProductResponse update(Long id, ProductRequest request) {
+        authContextService.assertRestaurantAccess(request.restaurantId());
         Product product = getEntity(id);
+        authContextService.assertRestaurantAccess(product.getRestaurant().getId());
         apply(product, request);
         return toResponse(product);
     }
 
     @Transactional
     public void delete(Long id) {
-        productRepository.delete(getEntity(id));
+        Product product = getEntity(id);
+        authContextService.assertRestaurantAccess(product.getRestaurant().getId());
+        product.setAvailable(false);
     }
 
     private void apply(Product product, ProductRequest request) {

@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
+import java.util.HexFormat;
 import java.util.List;
 
 @Service
@@ -25,16 +27,21 @@ public class OrderService {
     private final TableService tableService;
     private final ProductService productService;
     private final AdminNotificationService adminNotificationService;
+    private final AuthContextService authContextService;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional(readOnly = true)
     public List<OrderResponse> findAll(Long restaurantId, Long tableId) {
+        Long scopedRestaurantId = authContextService.currentRestaurantId();
         List<Order> orders;
         if (tableId != null) {
+            authContextService.assertRestaurantAccess(tableService.getEntity(tableId).getRestaurant().getId());
             orders = orderRepository.findByTableIdOrderByCreatedAtDesc(tableId);
         } else if (restaurantId != null) {
+            authContextService.assertRestaurantAccess(restaurantId);
             orders = orderRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId);
         } else {
-            orders = orderRepository.findAll();
+            orders = orderRepository.findByRestaurantIdOrderByCreatedAtDesc(scopedRestaurantId);
         }
         return orders.stream().map(this::toResponse).toList();
     }
@@ -47,7 +54,16 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderResponse findById(Long id) {
-        return toResponse(getEntity(id));
+        Order order = getEntity(id);
+        authContextService.assertRestaurantAccess(order.getRestaurant().getId());
+        return toResponse(order);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse findByTrackingCode(String trackingCode) {
+        return orderRepository.findByTrackingCode(trackingCode)
+                .map(this::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Order tracking code not found"));
     }
 
     @Transactional
@@ -61,6 +77,7 @@ public class OrderService {
         order.setRestaurant(table.getRestaurant());
         order.setTable(table);
         order.setNote(request.note());
+        order.setTrackingCode(generateTrackingCode());
 
         BigDecimal total = BigDecimal.ZERO;
         for (var itemRequest : request.items()) {
@@ -92,6 +109,7 @@ public class OrderService {
     @Transactional
     public OrderResponse updateStatus(Long id, OrderStatus status) {
         Order order = getEntity(id);
+        authContextService.assertRestaurantAccess(order.getRestaurant().getId());
         order.setStatus(status);
         return toResponse(order);
     }
@@ -103,6 +121,7 @@ public class OrderService {
                 order.getTable().getId(),
                 order.getTable().getTableNumber(),
                 order.getTable().getTableCode(),
+                order.getTrackingCode(),
                 order.getStatus(),
                 order.getNote(),
                 order.getTotalAmount(),
@@ -110,6 +129,16 @@ public class OrderService {
                 order.getCreatedAt(),
                 order.getUpdatedAt()
         );
+    }
+
+    private String generateTrackingCode() {
+        String code;
+        do {
+            byte[] bytes = new byte[16];
+            secureRandom.nextBytes(bytes);
+            code = HexFormat.of().formatHex(bytes);
+        } while (orderRepository.existsByTrackingCode(code));
+        return code;
     }
 
     private OrderItemResponse toItemResponse(OrderItem item) {

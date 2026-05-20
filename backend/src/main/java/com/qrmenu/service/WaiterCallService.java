@@ -19,11 +19,16 @@ public class WaiterCallService {
     private final WaiterCallRepository waiterCallRepository;
     private final TableService tableService;
     private final AdminNotificationService adminNotificationService;
+    private final AuthContextService authContextService;
 
     @Transactional(readOnly = true)
     public List<WaiterCallResponse> findAll(Long restaurantId) {
+        Long scopedRestaurantId = authContextService.currentRestaurantId();
+        if (restaurantId != null) {
+            authContextService.assertRestaurantAccess(restaurantId);
+        }
         List<WaiterCall> calls = restaurantId == null
-                ? waiterCallRepository.findAll()
+                ? waiterCallRepository.findByRestaurantIdOrderByCreatedAtDesc(scopedRestaurantId)
                 : waiterCallRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId);
         return calls.stream().map(this::toResponse).toList();
     }
@@ -49,6 +54,7 @@ public class WaiterCallService {
     @Transactional
     public WaiterCallResponse updateStatus(Long id, WaiterCallStatus status) {
         WaiterCall call = getEntity(id);
+        authContextService.assertRestaurantAccess(call.getRestaurant().getId());
         call.setStatus(status);
         return toResponse(call);
     }

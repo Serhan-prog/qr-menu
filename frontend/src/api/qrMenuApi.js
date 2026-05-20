@@ -2,8 +2,11 @@ import api from './client.js';
 
 export const qrMenuApi = {
   login: (payload) => api.post('/api/auth/login', payload).then((res) => res.data),
+  logout: () => api.post('/api/auth/logout'),
+  getWebSocketTicket: () => api.get('/api/auth/ws-ticket').then((res) => res.data),
 
   getRestaurants: () => api.get('/api/restaurants').then((res) => res.data),
+  getCurrentRestaurant: () => api.get('/api/restaurants/current').then((res) => res.data),
   createRestaurant: (payload) => api.post('/api/restaurants', payload).then((res) => res.data),
   updateRestaurant: (id, payload) => api.put(`/api/restaurants/${id}`, payload).then((res) => res.data),
   deleteRestaurant: (id) => api.delete(`/api/restaurants/${id}`),
@@ -28,6 +31,7 @@ export const qrMenuApi = {
   getMenu: (tableCode) => api.get(`/api/menu/table/${tableCode}`).then((res) => res.data),
   createOrder: (payload) => api.post('/api/orders', payload).then((res) => res.data),
   getOrder: (id) => api.get(`/api/orders/${id}`).then((res) => res.data),
+  getOrderByTrackingCode: (trackingCode) => api.get(`/api/orders/track/${trackingCode}`).then((res) => res.data),
   getOrders: (restaurantId) =>
     api.get('/api/orders', { params: restaurantId ? { restaurantId } : {} }).then((res) => res.data),
   updateOrderStatus: (id, status) => api.patch(`/api/orders/${id}/status`, { status }).then((res) => res.data),

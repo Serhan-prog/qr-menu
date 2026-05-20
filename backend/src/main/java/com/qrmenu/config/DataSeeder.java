@@ -13,6 +13,7 @@ import com.qrmenu.repository.RestaurantTableRepository;
 import com.qrmenu.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import java.util.HexFormat;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "app.seed", name = "enabled", havingValue = "true")
 public class DataSeeder implements CommandLineRunner {
     private final RestaurantRepository restaurantRepository;
     private final RestaurantTableRepository tableRepository;
@@ -70,9 +72,9 @@ public class DataSeeder implements CommandLineRunner {
 
         User admin = new User();
         admin.setRestaurant(restaurant);
-        admin.setEmail("admin@qrmenu.local");
-        admin.setFullName("Demo Admin");
-        admin.setPasswordHash(passwordEncoder.encode("admin123"));
+        admin.setEmail("serhanbozdemir3444@gmail.com");
+        admin.setFullName("Serhan Bozdemir");
+        admin.setPasswordHash(passwordEncoder.encode("1"));
         admin.setRole(UserRole.ADMIN);
         userRepository.save(admin);
     }

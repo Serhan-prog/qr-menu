@@ -10,7 +10,7 @@ public record UserRequest(
         @NotNull Long restaurantId,
         @NotBlank @Email @Size(max = 120) String email,
         @NotBlank @Size(max = 160) String fullName,
-        @NotBlank String passwordHash,
+        @NotBlank String password,
         UserRole role,
         Boolean active
 ) {

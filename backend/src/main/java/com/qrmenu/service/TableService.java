@@ -21,6 +21,7 @@ import java.util.List;
 public class TableService {
     private final RestaurantTableRepository tableRepository;
     private final RestaurantService restaurantService;
+    private final AuthContextService authContextService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${app.qr.public-base-url}")
@@ -28,8 +29,12 @@ public class TableService {
 
     @Transactional(readOnly = true)
     public List<TableResponse> findAll(Long restaurantId) {
+        Long scopedRestaurantId = authContextService.currentRestaurantId();
+        if (restaurantId != null) {
+            authContextService.assertRestaurantAccess(restaurantId);
+        }
         List<RestaurantTable> tables = restaurantId == null
-                ? tableRepository.findAll()
+                ? tableRepository.findByRestaurantIdOrderByTableNumberAsc(scopedRestaurantId)
                 : tableRepository.findByRestaurantIdOrderByTableNumberAsc(restaurantId);
         return tables.stream().map(this::toResponse).toList();
     }
@@ -48,11 +53,14 @@ public class TableService {
 
     @Transactional(readOnly = true)
     public TableResponse findById(Long id) {
-        return toResponse(getEntity(id));
+        RestaurantTable table = getEntity(id);
+        authContextService.assertRestaurantAccess(table.getRestaurant().getId());
+        return toResponse(table);
     }
 
     @Transactional
     public TableResponse create(TableRequest request) {
+        authContextService.assertRestaurantAccess(request.restaurantId());
         Restaurant restaurant = restaurantService.getEntity(request.restaurantId());
         if (tableRepository.existsByRestaurantIdAndTableNumber(request.restaurantId(), request.tableNumber())) {
             throw new BadRequestException("Table number already exists for restaurant");
@@ -70,7 +78,9 @@ public class TableService {
 
     @Transactional
     public TableResponse update(Long id, TableRequest request) {
+        authContextService.assertRestaurantAccess(request.restaurantId());
         RestaurantTable table = getEntity(id);
+        authContextService.assertRestaurantAccess(table.getRestaurant().getId());
         if (!table.getRestaurant().getId().equals(request.restaurantId())) {
             table.setRestaurant(restaurantService.getEntity(request.restaurantId()));
         }
@@ -87,7 +97,9 @@ public class TableService {
 
     @Transactional
     public void delete(Long id) {
-        tableRepository.delete(getEntity(id));
+        RestaurantTable table = getEntity(id);
+        authContextService.assertRestaurantAccess(table.getRestaurant().getId());
+        table.setActive(false);
     }
 
     public TableResponse toResponse(RestaurantTable table) {
