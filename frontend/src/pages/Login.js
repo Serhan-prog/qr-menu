@@ -14,6 +14,7 @@ function Login() {
     try {
       const auth = await qrMenuApi.login(values);
       saveAuth(auth);
+      await qrMenuApi.refreshCsrfToken();
       message.success('Giriş başarılı');
       navigate('/admin');
     } catch (error) {

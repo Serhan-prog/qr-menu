@@ -3,6 +3,7 @@ import api from './client.js';
 export const qrMenuApi = {
   login: (payload) => api.post('/api/auth/login', payload).then((res) => res.data),
   logout: () => api.post('/api/auth/logout'),
+  refreshCsrfToken: () => api.get('/api/csrf'),
   getWebSocketTicket: () => api.get('/api/auth/ws-ticket').then((res) => res.data),
 
   getRestaurants: () => api.get('/api/restaurants').then((res) => res.data),
@@ -10,6 +11,11 @@ export const qrMenuApi = {
   createRestaurant: (payload) => api.post('/api/restaurants', payload).then((res) => res.data),
   updateRestaurant: (id, payload) => api.put(`/api/restaurants/${id}`, payload).then((res) => res.data),
   deleteRestaurant: (id) => api.delete(`/api/restaurants/${id}`),
+
+  getUsers: () => api.get('/api/users').then((res) => res.data),
+  createUser: (payload) => api.post('/api/users', payload).then((res) => res.data),
+  updateUser: (id, payload) => api.put(`/api/users/${id}`, payload).then((res) => res.data),
+  deleteUser: (id) => api.delete(`/api/users/${id}`),
 
   getTables: (restaurantId) =>
     api.get('/api/tables', { params: restaurantId ? { restaurantId } : {} }).then((res) => res.data),
@@ -34,7 +40,8 @@ export const qrMenuApi = {
   getOrderByTrackingCode: (trackingCode) => api.get(`/api/orders/track/${trackingCode}`).then((res) => res.data),
   getOrders: (restaurantId) =>
     api.get('/api/orders', { params: restaurantId ? { restaurantId } : {} }).then((res) => res.data),
-  updateOrderStatus: (id, status) => api.patch(`/api/orders/${id}/status`, { status }).then((res) => res.data),
+  updateOrderStatus: (id, status, cancellationReason) =>
+    api.patch(`/api/orders/${id}/status`, { status, cancellationReason }).then((res) => res.data),
 
   createWaiterCall: (payload) => api.post('/api/waiter-calls', payload).then((res) => res.data),
   getWaiterCalls: (restaurantId) =>

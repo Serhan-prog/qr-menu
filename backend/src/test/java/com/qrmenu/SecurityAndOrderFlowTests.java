@@ -9,6 +9,7 @@ import com.qrmenu.entity.RestaurantTable;
 import com.qrmenu.entity.User;
 import com.qrmenu.entity.UserRole;
 import com.qrmenu.repository.CategoryRepository;
+import com.qrmenu.repository.OrderRepository;
 import com.qrmenu.repository.ProductRepository;
 import com.qrmenu.repository.RestaurantRepository;
 import com.qrmenu.repository.RestaurantTableRepository;
@@ -28,8 +29,10 @@ import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,6 +60,9 @@ class SecurityAndOrderFlowTests {
     private ProductRepository productRepository;
 
     @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -69,6 +75,7 @@ class SecurityAndOrderFlowTests {
 
     @BeforeEach
     void setUp() {
+        orderRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
         tableRepository.deleteAll();
@@ -104,6 +111,14 @@ class SecurityAndOrderFlowTests {
         admin.setPasswordHash(passwordEncoder.encode("strong-pass"));
         admin.setRole(UserRole.ADMIN);
         userRepository.save(admin);
+
+        User staff = new User();
+        staff.setRestaurant(restaurant);
+        staff.setEmail("staff@test.local");
+        staff.setFullName("Test Staff");
+        staff.setPasswordHash(passwordEncoder.encode("staff-pass"));
+        staff.setRole(UserRole.STAFF);
+        userRepository.save(staff);
     }
 
     @Test
@@ -176,12 +191,125 @@ class SecurityAndOrderFlowTests {
                 .andExpect(jsonPath("$.name").value("Yeni Ürün"));
     }
 
+    @Test
+    void cancelledOrderExposesCancellationReasonToTrackedCustomer() throws Exception {
+        Cookie authCookie = loginCookie();
+
+        String orderBody = mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tableCode":"test-table-code","items":[{"productId":%d,"quantity":1}]}
+                                """.formatted(product.getId())))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode order = objectMapper.readTree(orderBody);
+        long orderId = order.get("id").asLong();
+        String trackingCode = order.get("trackingCode").asText();
+
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status")
+                        .with(csrf())
+                        .cookie(authCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"CANCELLED"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status")
+                        .with(csrf())
+                        .cookie(authCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"CANCELLED","cancellationReason":"Urun stokta kalmadi"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.cancellationReason").value("Urun stokta kalmadi"));
+
+        mockMvc.perform(get("/api/orders/track/" + trackingCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cancellationReason").value("Urun stokta kalmadi"));
+    }
+
+    @Test
+    void staffCanRunOperationsButCannotChangeMenuModel() throws Exception {
+        Cookie staffCookie = loginCookie("staff@test.local", "staff-pass");
+
+        mockMvc.perform(get("/api/restaurants/current").cookie(staffCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(restaurant.getId()));
+
+        mockMvc.perform(get("/api/orders").cookie(staffCookie))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/waiter-calls").cookie(staffCookie))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/bill-requests").cookie(staffCookie))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/auth/ws-ticket").cookie(staffCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ticket").isString());
+
+        String orderBody = mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tableCode":"test-table-code","items":[{"productId":%d,"quantity":1}]}
+                                """.formatted(product.getId())))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long orderId = objectMapper.readTree(orderBody).get("id").asLong();
+
+        Cookie csrfCookie = mockMvc.perform(get("/api/csrf").cookie(staffCookie))
+                .andExpect(status().isNoContent())
+                .andReturn()
+                .getResponse()
+                .getCookie("XSRF-TOKEN");
+
+        assertNotNull(csrfCookie);
+
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status")
+                        .cookie(staffCookie, csrfCookie)
+                        .header("X-XSRF-TOKEN", csrfCookie.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"PREPARING"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PREPARING"));
+
+        mockMvc.perform(post("/api/products")
+                        .with(csrf())
+                        .cookie(staffCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "restaurantId": %d,
+                                  "categoryId": %d,
+                                  "name": "Personel Urunu",
+                                  "price": 90.00
+                                }
+                                """.formatted(restaurant.getId(), category.getId())))
+                .andExpect(status().isForbidden());
+    }
+
     private Cookie loginCookie() throws Exception {
+        return loginCookie("admin@test.local", "strong-pass");
+    }
+
+    private Cookie loginCookie(String email, String password) throws Exception {
         return mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"admin@test.local","password":"strong-pass"}
-                                """))
+                                {"email":"%s","password":"%s"}
+                                """.formatted(email, password)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isString())
                 .andReturn()

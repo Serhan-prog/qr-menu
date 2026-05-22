@@ -1,12 +1,12 @@
 import { Button, Card, Col, Empty, Row, Space, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, ClockCircleOutlined, FireOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { currency, dateTime } from '../../utils/format.js';
 
 const { Text, Title } = Typography;
 
 const activeStatuses = ['PENDING', 'PREPARING', 'READY'];
 
-function AdminKitchenPanel({ orders, onStatusChange }) {
+function AdminKitchenPanel({ orders, onStatusChange, onCancel }) {
   const visibleOrders = orders.filter((order) => activeStatuses.includes(order.status));
 
   if (visibleOrders.length === 0) {
@@ -30,11 +30,15 @@ function AdminKitchenPanel({ orders, onStatusChange }) {
               <Tag color={statusColor(order.status)}>{statusLabel(order.status)}</Tag>
             </div>
 
+            {order.note && <Text className="kitchen-order-note"><strong>Sipariş notu:</strong> {order.note}</Text>}
             <div className="kitchen-items">
               {order.items.map((item) => (
                 <div className="kitchen-item" key={item.id}>
                   <strong>{item.quantity}x</strong>
-                  <span>{item.productName}</span>
+                  <span>
+                    {item.productName}
+                    {item.note && <small>{item.note}</small>}
+                  </span>
                   <Text>{currency(item.lineTotal)}</Text>
                 </div>
               ))}
@@ -56,6 +60,9 @@ function AdminKitchenPanel({ orders, onStatusChange }) {
                   Servis Edildi
                 </Button>
               )}
+              <Button danger icon={<CloseCircleOutlined />} onClick={() => onCancel(order)}>
+                Siparişi İptal Et
+              </Button>
             </Space>
           </Card>
         </Col>

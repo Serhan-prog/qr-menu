@@ -51,6 +51,9 @@ public class Order {
     @Column(length = 1000)
     private String note;
 
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
     @Column(name = "tracking_code", nullable = false, unique = true, updatable = false, length = 64)
     private String trackingCode;
 

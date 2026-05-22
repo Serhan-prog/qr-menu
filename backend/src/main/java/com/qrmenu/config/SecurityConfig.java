@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.qrmenu.repository.UserRepository;
@@ -32,8 +33,12 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         .ignoringRequestMatchers(
-                                "/api/**"
+                                "/api/auth/**",
+                                "/api/orders",
+                                "/api/waiter-calls",
+                                "/api/bill-requests"
                         )
                 )
                 .cors(cors -> {})
@@ -46,7 +51,20 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/orders/track/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/waiter-calls").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/bill-requests").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants/current").authenticated()
                         .requestMatchers("/api/users/**", "/api/restaurants/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/tables", "/api/tables/**",
+                                "/api/categories", "/api/categories/**",
+                                "/api/products", "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/tables", "/api/tables/**",
+                                "/api/categories", "/api/categories/**",
+                                "/api/products", "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE,
+                                "/api/tables", "/api/tables/**",
+                                "/api/categories", "/api/categories/**",
+                                "/api/products", "/api/products/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterAfter(csrfCookieFilter, CsrfFilter.class)

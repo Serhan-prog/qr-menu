@@ -107,9 +107,17 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse updateStatus(Long id, OrderStatus status) {
+    public OrderResponse updateStatus(Long id, OrderStatus status, String cancellationReason) {
         Order order = getEntity(id);
         authContextService.assertRestaurantAccess(order.getRestaurant().getId());
+        if (status == OrderStatus.CANCELLED) {
+            if (cancellationReason == null || cancellationReason.isBlank()) {
+                throw new BadRequestException("Cancellation reason is required");
+            }
+            order.setCancellationReason(cancellationReason.trim());
+        } else {
+            order.setCancellationReason(null);
+        }
         order.setStatus(status);
         return toResponse(order);
     }
@@ -124,6 +132,7 @@ public class OrderService {
                 order.getTrackingCode(),
                 order.getStatus(),
                 order.getNote(),
+                order.getCancellationReason(),
                 order.getTotalAmount(),
                 order.getItems().stream().map(this::toItemResponse).toList(),
                 order.getCreatedAt(),

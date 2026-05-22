@@ -5,13 +5,8 @@ function websocketBaseUrl() {
     return import.meta.env.VITE_WS_BASE_URL;
   }
 
-  if (!import.meta.env.DEV) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}`;
-  }
-
-  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-  return apiBase.replace(/^http/, 'ws');
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}`;
 }
 
 export function connectAdminNotifications({ restaurantId, onNotification, onStatusChange }) {
@@ -21,6 +16,7 @@ export function connectAdminNotifications({ restaurantId, onNotification, onStat
 
   let socket;
   let cancelled = false;
+  let reconnectTimer;
 
   async function connect() {
     try {
@@ -34,7 +30,12 @@ export function connectAdminNotifications({ restaurantId, onNotification, onStat
 
       socket = new WebSocket(url.toString());
       socket.onopen = () => onStatusChange?.('connected');
-      socket.onclose = () => onStatusChange?.('closed');
+      socket.onclose = () => {
+        onStatusChange?.('closed');
+        if (!cancelled) {
+          reconnectTimer = window.setTimeout(connect, 3000);
+        }
+      };
       socket.onerror = () => onStatusChange?.('error');
       socket.onmessage = (event) => {
         try {
@@ -45,6 +46,9 @@ export function connectAdminNotifications({ restaurantId, onNotification, onStat
       };
     } catch {
       onStatusChange?.('error');
+      if (!cancelled) {
+        reconnectTimer = window.setTimeout(connect, 3000);
+      }
     }
   }
 
@@ -52,6 +56,9 @@ export function connectAdminNotifications({ restaurantId, onNotification, onStat
 
   return () => {
     cancelled = true;
+    if (reconnectTimer) {
+      window.clearTimeout(reconnectTimer);
+    }
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
       socket.close();
     }

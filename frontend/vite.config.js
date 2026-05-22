@@ -20,6 +20,19 @@ export default defineConfig({
       include: '**/*.{js,jsx}',
     }),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://localhost:8080',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
+  },
   build: {
     chunkSizeWarningLimit: 1300,
     rollupOptions: {

@@ -1,6 +1,7 @@
 import {
   Badge,
   Button,
+  Alert,
   Drawer,
   Empty,
   Input,
@@ -57,6 +58,9 @@ function Menu() {
   const [cartOpen, setCartOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [orders, setOrders] = useState([]);
+  const [orderNote, setOrderNote] = useState('');
+  const [requestModal, setRequestModal] = useState(null);
+  const [requestNote, setRequestNote] = useState('');
   const [search, setSearch] = useState('');
   const [view, setView] = useState('Menü');
 
@@ -113,6 +117,15 @@ function Menu() {
       const freshOrders = await Promise.all(
         orders.map((order) => qrMenuApi.getOrderByTrackingCode(order.trackingCode))
       );
+      freshOrders.forEach((freshOrder) => {
+        const previousOrder = orders.find((order) => order.trackingCode === freshOrder.trackingCode);
+        if (previousOrder?.status !== 'CANCELLED' && freshOrder.status === 'CANCELLED') {
+          Modal.warning({
+            title: 'Siparişiniz iptal edildi',
+            content: freshOrder.cancellationReason || 'Restoran siparişinizi iptal etti.',
+          });
+        }
+      });
       setOrders(freshOrders);
     } catch {
       // Polling sessiz kalır; ana işlemler message ile bildirilir.
@@ -127,7 +140,7 @@ function Menu() {
           item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...current, { productId: product.id, name: product.name, price: product.price, quantity: 1 }];
+      return [...current, { productId: product.id, name: product.name, price: product.price, quantity: 1, note: '' }];
     });
     message.success(`${product.name} sepete eklendi`);
   };
@@ -140,6 +153,12 @@ function Menu() {
     );
   };
 
+  const updateItemNote = (productId, note) => {
+    setCart((current) =>
+      current.map((item) => (item.productId === productId ? { ...item, note } : item))
+    );
+  };
+
   const submitOrder = async () => {
     if (cart.length === 0) {
       message.warning('Sepet boş');
@@ -149,10 +168,16 @@ function Menu() {
     try {
       const order = await qrMenuApi.createOrder({
         tableCode,
-        items: cart.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+        note: orderNote.trim() || null,
+        items: cart.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          note: item.note.trim() || null,
+        })),
       });
       setOrders((current) => [order, ...current]);
       setCart([]);
+      setOrderNote('');
       setCartOpen(false);
       setView('Siparişlerim');
       Modal.success({ title: 'Sipariş alındı', content: 'Siparişiniz mutfağa iletildi. Durumunu bu ekrandan takip edebilirsiniz.' });
@@ -163,19 +188,33 @@ function Menu() {
     }
   };
 
-  const callWaiter = async () => {
-    try {
-      await qrMenuApi.createWaiterCall({ tableCode, message: 'Müşteri garson çağırıyor' });
-      message.success('Garson çağrıldı');
-    } catch (error) {
-      message.error(apiError(error));
-    }
+  const openRequestModal = (type) => {
+    setRequestModal(type);
+    setRequestNote('');
   };
 
-  const requestBill = async () => {
+  const closeRequestModal = () => {
+    setRequestModal(null);
+    setRequestNote('');
+  };
+
+  const submitServiceRequest = async () => {
     try {
-      await qrMenuApi.createBillRequest({ tableCode, note: 'Müşteri hesap istiyor' });
-      message.success('Hesap isteği gönderildi');
+      if (requestModal === 'waiter') {
+        await qrMenuApi.createWaiterCall({
+          tableCode,
+          message: requestNote.trim() || 'Müşteri garson çağırıyor',
+        });
+        message.success('Garson çağrıldı');
+      }
+      if (requestModal === 'bill') {
+        await qrMenuApi.createBillRequest({
+          tableCode,
+          note: requestNote.trim() || 'Müşteri hesap istiyor',
+        });
+        message.success('Hesap isteği gönderildi');
+      }
+      closeRequestModal();
     } catch (error) {
       message.error(apiError(error));
     }
@@ -197,8 +236,8 @@ function Menu() {
           <Title>{menu.restaurantName}</Title>
           <Text>QR menüden sipariş verin, garson çağırın ve sipariş durumunu anlık takip edin.</Text>
           <div className="menu-hero-actions">
-            <Button icon={<BellOutlined />} onClick={callWaiter}>Garson Çağır</Button>
-            <Button icon={<WalletOutlined />} onClick={requestBill}>Hesap İste</Button>
+            <Button icon={<BellOutlined />} onClick={() => openRequestModal('waiter')}>Garson Çağır</Button>
+            <Button icon={<WalletOutlined />} onClick={() => openRequestModal('bill')}>Hesap İste</Button>
             <Badge count={cartCount}>
               <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)}>Sepet</Button>
             </Badge>
@@ -266,7 +305,20 @@ function Menu() {
                   </div>
                   <Tag color={statusColor(order.status)}>{statusLabel(order.status)}</Tag>
                 </div>
-                <Progress percent={orderProgress(order.status)} showInfo={false} strokeColor="#0f766e" />
+                {order.status === 'CANCELLED' && (
+                  <Alert
+                    className="cancelled-order-alert"
+                    type="error"
+                    showIcon
+                    message="Sipariş iptal edildi"
+                    description={order.cancellationReason || 'Restoran siparişinizi iptal etti.'}
+                  />
+                )}
+                <Progress
+                  percent={orderProgress(order.status)}
+                  showInfo={false}
+                  strokeColor={order.status === 'CANCELLED' ? '#dc2626' : '#0f766e'}
+                />
                 <Timeline
                   className="order-timeline"
                   items={statusSteps.map((step) => ({
@@ -274,12 +326,16 @@ function Menu() {
                     children: step.label,
                   }))}
                 />
+                {order.note && <Text className="order-customer-note"><strong>Sipariş notu:</strong> {order.note}</Text>}
                 <List
                   size="small"
                   dataSource={order.items}
                   renderItem={(item) => (
                     <List.Item>
-                      <Text>{item.quantity} x {item.productName}</Text>
+                      <div className="tracked-order-line">
+                        <Text>{item.quantity} x {item.productName}</Text>
+                        {item.note && <Text type="secondary">{item.note}</Text>}
+                      </div>
                       <strong>{currency(item.lineTotal)}</strong>
                     </List.Item>
                   )}
@@ -304,36 +360,94 @@ function Menu() {
       </Button>
 
       <Drawer
-        title="Sepet"
+        title={
+          <div className="cart-drawer-title">
+            <ShoppingCartOutlined />
+            <div>
+              <strong>Sepet</strong>
+              <Text>{cartCount > 0 ? `${cartCount} ürün seçildi` : 'Siparişiniz burada hazırlanır'}</Text>
+            </div>
+          </div>
+        }
         placement="right"
-        width={420}
+        width={480}
         className="cart-drawer"
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         footer={
           <div className="cart-footer">
-            <strong>{currency(total)}</strong>
-            <Button type="primary" icon={<CheckCircleOutlined />} loading={submitting} onClick={submitOrder}>
+            <div className="cart-total">
+              <Text>Ödenecek Toplam</Text>
+              <strong>{currency(total)}</strong>
+            </div>
+            <Button size="large" type="primary" icon={<CheckCircleOutlined />} loading={submitting} onClick={submitOrder}>
               Sipariş Ver
             </Button>
           </div>
         }
       >
-        <List
-          dataSource={cart}
-          locale={{ emptyText: 'Sepet boş' }}
-          renderItem={(item) => (
-            <List.Item>
-              <List.Item.Meta title={item.name} description={currency(Number(item.price) * item.quantity)} />
-              <div className="quantity-control">
-                <Button icon={<MinusOutlined />} onClick={() => updateQuantity(item.productId, item.quantity - 1)} />
-                <InputNumber min={1} value={item.quantity} onChange={(value) => updateQuantity(item.productId, value || 1)} />
-                <Button icon={<PlusOutlined />} onClick={() => updateQuantity(item.productId, item.quantity + 1)} />
-              </div>
-            </List.Item>
-          )}
-        />
+        <div className="cart-shell">
+          <List
+            className="cart-list"
+            dataSource={cart}
+            locale={{ emptyText: 'Sepet boş' }}
+            renderItem={(item) => (
+              <List.Item className="cart-line-item">
+                <article className="cart-line-card">
+                  <div className="cart-line-head">
+                    <div>
+                      <Title level={5}>{item.name}</Title>
+                      <Text>{currency(item.price)} birim fiyat</Text>
+                    </div>
+                    <strong>{currency(Number(item.price) * item.quantity)}</strong>
+                  </div>
+                  <div className="cart-line-controls">
+                    <Text strong>Adet</Text>
+                    <div className="quantity-control cart-quantity-control">
+                      <Button icon={<MinusOutlined />} onClick={() => updateQuantity(item.productId, item.quantity - 1)} />
+                      <InputNumber min={1} value={item.quantity} onChange={(value) => updateQuantity(item.productId, value || 1)} />
+                      <Button icon={<PlusOutlined />} onClick={() => updateQuantity(item.productId, item.quantity + 1)} />
+                    </div>
+                  </div>
+                  <Input.TextArea
+                    maxLength={500}
+                    rows={2}
+                    placeholder="Ürün notu"
+                    value={item.note}
+                    onChange={(event) => updateItemNote(item.productId, event.target.value)}
+                  />
+                </article>
+              </List.Item>
+            )}
+          />
+          <div className="cart-order-note">
+            <Text strong>Sipariş Notu</Text>
+            <Input.TextArea
+              maxLength={1000}
+              rows={3}
+              placeholder="Örn. hepsi birlikte gelsin"
+              value={orderNote}
+              onChange={(event) => setOrderNote(event.target.value)}
+            />
+          </div>
+        </div>
       </Drawer>
+      <Modal
+        title={requestModal === 'bill' ? 'Hesap İste' : 'Garson Çağır'}
+        open={Boolean(requestModal)}
+        onCancel={closeRequestModal}
+        onOk={submitServiceRequest}
+        okText="Gönder"
+        cancelText="Vazgeç"
+      >
+        <Input.TextArea
+          maxLength={500}
+          rows={3}
+          placeholder={requestModal === 'bill' ? 'Hesap isteğine not ekleyin' : 'Garsona mesaj ekleyin'}
+          value={requestNote}
+          onChange={(event) => setRequestNote(event.target.value)}
+        />
+      </Modal>
     </Layout>
   );
 }
