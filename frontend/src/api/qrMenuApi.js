@@ -3,7 +3,7 @@ import api from './client.js';
 export const qrMenuApi = {
   login: (payload) => api.post('/api/auth/login', payload).then((res) => res.data),
   logout: () => api.post('/api/auth/logout'),
-  refreshCsrfToken: () => api.get('/api/csrf'),
+  refreshCsrfToken: () => api.get('/api/csrf').then((res) => res.data),
   getWebSocketTicket: () => api.get('/api/auth/ws-ticket').then((res) => res.data),
 
   getRestaurants: () => api.get('/api/restaurants').then((res) => res.data),

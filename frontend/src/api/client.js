@@ -19,6 +19,8 @@ function readCookie(name) {
   return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : null;
 }
 
+let currentCsrfToken = null;
+
 function csrfIgnoredPath(url = '') {
   const path = url.split('?')[0];
   return path === '/api/auth/login'
@@ -41,11 +43,12 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  if (requiresCsrfHeader(config)) {
-    let csrfToken = readCookie('XSRF-TOKEN');
+  if (!token && requiresCsrfHeader(config)) {
+    let csrfToken = currentCsrfToken || readCookie('XSRF-TOKEN');
     if (!csrfToken) {
-      await api.get('/api/csrf');
-      csrfToken = readCookie('XSRF-TOKEN');
+      const response = await api.get('/api/csrf');
+      csrfToken = response.data?.token || readCookie('XSRF-TOKEN');
+      currentCsrfToken = csrfToken;
     }
 
     if (csrfToken) {

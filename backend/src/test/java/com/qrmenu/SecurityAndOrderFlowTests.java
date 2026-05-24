@@ -9,11 +9,13 @@ import com.qrmenu.entity.RestaurantTable;
 import com.qrmenu.entity.User;
 import com.qrmenu.entity.UserRole;
 import com.qrmenu.repository.CategoryRepository;
+import com.qrmenu.repository.BillRequestRepository;
 import com.qrmenu.repository.OrderRepository;
 import com.qrmenu.repository.ProductRepository;
 import com.qrmenu.repository.RestaurantRepository;
 import com.qrmenu.repository.RestaurantTableRepository;
 import com.qrmenu.repository.UserRepository;
+import com.qrmenu.repository.WaiterCallRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +65,12 @@ class SecurityAndOrderFlowTests {
     private OrderRepository orderRepository;
 
     @Autowired
+    private WaiterCallRepository waiterCallRepository;
+
+    @Autowired
+    private BillRequestRepository billRequestRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -75,6 +83,8 @@ class SecurityAndOrderFlowTests {
 
     @BeforeEach
     void setUp() {
+        billRequestRepository.deleteAll();
+        waiterCallRepository.deleteAll();
         orderRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
@@ -268,7 +278,8 @@ class SecurityAndOrderFlowTests {
         long orderId = objectMapper.readTree(orderBody).get("id").asLong();
 
         Cookie csrfCookie = mockMvc.perform(get("/api/csrf").cookie(staffCookie))
-                .andExpect(status().isNoContent())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString())
                 .andReturn()
                 .getResponse()
                 .getCookie("XSRF-TOKEN");
@@ -300,6 +311,71 @@ class SecurityAndOrderFlowTests {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void bearerAuthenticatedOperationsCanUpdateOrderWaiterAndBillStatusesWithoutCsrfCookie() throws Exception {
+        String staffToken = loginToken("staff@test.local", "staff-pass");
+
+        String orderBody = mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tableCode":"test-table-code","items":[{"productId":%d,"quantity":1}]}
+                                """.formatted(product.getId())))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long orderId = objectMapper.readTree(orderBody).get("id").asLong();
+
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status")
+                        .header("Authorization", "Bearer " + staffToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"PREPARING"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PREPARING"));
+
+        String waiterBody = mockMvc.perform(post("/api/waiter-calls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tableCode":"test-table-code","message":"Garson gerekli"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long waiterCallId = objectMapper.readTree(waiterBody).get("id").asLong();
+
+        mockMvc.perform(patch("/api/waiter-calls/" + waiterCallId + "/status")
+                        .header("Authorization", "Bearer " + staffToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"COMPLETED"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+
+        String billBody = mockMvc.perform(post("/api/bill-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tableCode":"test-table-code","note":"Hesap istendi"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long billRequestId = objectMapper.readTree(billBody).get("id").asLong();
+
+        mockMvc.perform(patch("/api/bill-requests/" + billRequestId + "/status")
+                        .header("Authorization", "Bearer " + staffToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"PAID"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAID"));
+    }
+
     private Cookie loginCookie() throws Exception {
         return loginCookie("admin@test.local", "strong-pass");
     }
@@ -315,5 +391,19 @@ class SecurityAndOrderFlowTests {
                 .andReturn()
                 .getResponse()
                 .getCookie("qr_menu_token");
+    }
+
+    private String loginToken(String email, String password) throws Exception {
+        String response = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(email, password)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).get("token").asText();
     }
 }

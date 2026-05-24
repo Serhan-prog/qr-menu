@@ -1,6 +1,7 @@
 package com.qrmenu.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -8,7 +9,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -18,6 +18,7 @@ import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import com.qrmenu.repository.UserRepository;
 
 @Configuration
@@ -28,17 +29,24 @@ public class SecurityConfig {
     private final CsrfCookieFilter csrfCookieFilter;
     private final UserRepository userRepository;
 
+    @Value("${app.security.cookie-secure:false}")
+    private boolean cookieSecure;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRepository(csrfTokenRepository())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         .ignoringRequestMatchers(
-                                "/api/auth/**",
-                                "/api/orders",
-                                "/api/waiter-calls",
-                                "/api/bill-requests"
+                                request -> {
+                                    String authorization = request.getHeader("Authorization");
+                                    return authorization != null && authorization.startsWith("Bearer ");
+                                },
+                                new AntPathRequestMatcher("/api/auth/**"),
+                                new AntPathRequestMatcher("/api/orders", "POST"),
+                                new AntPathRequestMatcher("/api/waiter-calls", "POST"),
+                                new AntPathRequestMatcher("/api/bill-requests", "POST")
                         )
                 )
                 .cors(cors -> {})
@@ -70,6 +78,15 @@ public class SecurityConfig {
                 .addFilterAfter(csrfCookieFilter, CsrfFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    @Bean
+    public CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieCustomizer(cookie -> cookie
+                .secure(cookieSecure)
+                .sameSite(cookieSecure ? "None" : "Lax"));
+        return repository;
     }
 
     @Bean
