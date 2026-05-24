@@ -47,7 +47,11 @@ import { connectAdminNotifications } from '../api/adminRealtime.js';
 import { qrMenuApi } from '../api/qrMenuApi.js';
 import { apiError, currency, dateTime } from '../utils/format.js';
 import { clearAuth, getUser } from '../utils/auth.js';
-import { playNotificationSound } from '../utils/notificationSound.js';
+import {
+  enableNotificationSound,
+  isNotificationSoundReady,
+  playNotificationSound,
+} from '../utils/notificationSound.js';
 
 const { Content, Header, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -70,6 +74,7 @@ function AdminDashboard() {
   const [qrRecord, setQrRecord] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [realtimeStatus, setRealtimeStatus] = useState('closed');
+  const [soundEnabled, setSoundEnabled] = useState(isNotificationSoundReady());
   const [form] = Form.useForm();
   const user = getUser();
   const isAdmin = user?.role === 'ADMIN';
@@ -273,6 +278,16 @@ function AdminDashboard() {
     } catch (error) {
       message.error(apiError(error));
     }
+  };
+
+  const testNotificationSound = async () => {
+    const enabled = await enableNotificationSound();
+    setSoundEnabled(enabled);
+    if (enabled) {
+      message.success('Bildirim sesi aktif');
+      return;
+    }
+    message.warning('TarayÄ±cÄ± sesi engelledi. Sayfayla etkileÅŸime geÃ§ip tekrar deneyin.');
   };
 
   const actionColumn = (type) => ({
@@ -526,8 +541,8 @@ function AdminDashboard() {
             <Tag color={realtimeStatus === 'connected' ? 'green' : 'default'}>
               {realtimeStatus === 'connected' ? 'Canlı bağlantı açık' : 'Canlı bağlantı kapalı'}
             </Tag>
-            <Button icon={<SoundOutlined />} onClick={playNotificationSound}>
-              Ses Testi
+            <Button icon={<SoundOutlined />} type={soundEnabled ? 'default' : 'primary'} onClick={testNotificationSound}>
+              {soundEnabled ? 'Ses Testi' : 'Sesi AÃ§'}
             </Button>
             <Button icon={<ReloadOutlined />} onClick={() => loadScopedData()}>
               Yenile

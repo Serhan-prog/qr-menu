@@ -1,21 +1,65 @@
 let audioContext;
+let soundReady = false;
 
-export function playNotificationSound() {
+function audioContextClass() {
+  return window.AudioContext || window.webkitAudioContext;
+}
+
+async function getAudioContext() {
+  const AudioContextClass = audioContextClass();
+  if (!AudioContextClass) {
+    return null;
+  }
+
+  audioContext = audioContext || new AudioContextClass();
+  if (audioContext.state === 'suspended') {
+    await audioContext.resume();
+  }
+
+  soundReady = audioContext.state === 'running';
+  return audioContext;
+}
+
+export async function enableNotificationSound() {
   try {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) {
+    const context = await getAudioContext();
+    if (!context) {
+      return false;
+    }
+
+    const gain = context.createGain();
+    const oscillator = context.createOscillator();
+    const now = context.currentTime;
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(660, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.06, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.09);
+
+    return true;
+  } catch {
+    soundReady = false;
+    return false;
+  }
+}
+
+export async function playNotificationSound() {
+  try {
+    const context = await getAudioContext();
+    if (!context || !soundReady) {
       return;
     }
 
-    audioContext = audioContext || new AudioContextClass();
-    if (audioContext.state === 'suspended') {
-      audioContext.resume();
-    }
-
-    const first = audioContext.createOscillator();
-    const second = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    const now = audioContext.currentTime;
+    const first = context.createOscillator();
+    const second = context.createOscillator();
+    const gain = context.createGain();
+    const now = context.currentTime;
 
     first.type = 'sine';
     second.type = 'sine';
@@ -28,7 +72,7 @@ export function playNotificationSound() {
 
     first.connect(gain);
     second.connect(gain);
-    gain.connect(audioContext.destination);
+    gain.connect(context.destination);
 
     first.start(now);
     first.stop(now + 0.16);
@@ -37,4 +81,8 @@ export function playNotificationSound() {
   } catch {
     // Browser autoplay rules can block sound until the admin interacts with the page.
   }
+}
+
+export function isNotificationSoundReady() {
+  return soundReady;
 }
