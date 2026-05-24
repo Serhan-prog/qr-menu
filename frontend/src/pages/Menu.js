@@ -50,6 +50,9 @@ const statusSteps = [
   { key: 'SERVED', label: 'Servis Edildi' },
 ];
 
+const ORDER_STORAGE_PREFIX = 'qr_menu_table_orders:';
+const FINAL_ORDER_STATUSES = ['SERVED', 'CANCELLED'];
+
 function Menu() {
   const { tableCode } = useParams();
   const [menu, setMenu] = useState(null);
@@ -66,6 +69,7 @@ function Menu() {
 
   useEffect(() => {
     loadMenu();
+    restoreTrackedOrders();
   }, [tableCode]);
 
   useEffect(() => {
@@ -112,11 +116,40 @@ function Menu() {
     }
   };
 
+  const restoreTrackedOrders = async () => {
+    const trackingCodes = readStoredTrackingCodes(tableCode);
+    if (trackingCodes.length === 0) {
+      setOrders([]);
+      return;
+    }
+
+    try {
+      const results = await Promise.allSettled(
+        trackingCodes.map((trackingCode) => qrMenuApi.getOrderByTrackingCode(trackingCode))
+      );
+      const restoredOrders = results
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value);
+
+      syncStoredTrackingCodes(tableCode, restoredOrders);
+      setOrders(restoredOrders);
+      if (restoredOrders.length > 0) {
+        setView('Siparişlerim');
+      }
+    } catch {
+      // Restoring tracked orders must not block menu usage.
+    }
+  };
+
   const refreshOrders = async () => {
     try {
-      const freshOrders = await Promise.all(
+      const results = await Promise.allSettled(
         orders.map((order) => qrMenuApi.getOrderByTrackingCode(order.trackingCode))
       );
+      const freshOrders = results
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value);
+
       freshOrders.forEach((freshOrder) => {
         const previousOrder = orders.find((order) => order.trackingCode === freshOrder.trackingCode);
         if (previousOrder?.status !== 'CANCELLED' && freshOrder.status === 'CANCELLED') {
@@ -126,6 +159,7 @@ function Menu() {
           });
         }
       });
+      syncStoredTrackingCodes(tableCode, freshOrders);
       setOrders(freshOrders);
     } catch {
       // Polling sessiz kalır; ana işlemler message ile bildirilir.
@@ -175,6 +209,7 @@ function Menu() {
           note: item.note.trim() || null,
         })),
       });
+      rememberTrackingCode(tableCode, order.trackingCode);
       setOrders((current) => [order, ...current]);
       setCart([]);
       setOrderNote('');
@@ -471,6 +506,44 @@ function statusLabel(status) {
 function statusColor(status) {
   const colors = { PENDING: 'orange', PREPARING: 'blue', READY: 'cyan', SERVED: 'green', CANCELLED: 'red' };
   return colors[status] || 'default';
+}
+
+function storageKey(tableCode) {
+  return `${ORDER_STORAGE_PREFIX}${tableCode}`;
+}
+
+function readStoredTrackingCodes(tableCode) {
+  try {
+    const rawValue = window.localStorage.getItem(storageKey(tableCode));
+    const parsedValue = rawValue ? JSON.parse(rawValue) : [];
+    return Array.isArray(parsedValue) ? parsedValue.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredTrackingCodes(tableCode, trackingCodes) {
+  try {
+    const uniqueCodes = [...new Set(trackingCodes.filter(Boolean))];
+    if (uniqueCodes.length === 0) {
+      window.localStorage.removeItem(storageKey(tableCode));
+      return;
+    }
+    window.localStorage.setItem(storageKey(tableCode), JSON.stringify(uniqueCodes));
+  } catch {
+    // If localStorage is unavailable, tracking works only for the current page session.
+  }
+}
+
+function rememberTrackingCode(tableCode, trackingCode) {
+  writeStoredTrackingCodes(tableCode, [trackingCode, ...readStoredTrackingCodes(tableCode)]);
+}
+
+function syncStoredTrackingCodes(tableCode, orders) {
+  const activeTrackingCodes = orders
+    .filter((order) => !FINAL_ORDER_STATUSES.includes(order.status))
+    .map((order) => order.trackingCode);
+  writeStoredTrackingCodes(tableCode, activeTrackingCodes);
 }
 
 export default Menu;
