@@ -287,7 +287,7 @@ function AdminDashboard() {
       message.success('Bildirim sesi aktif');
       return;
     }
-    message.warning('TarayÄ±cÄ± sesi engelledi. Sayfayla etkileÅŸime geÃ§ip tekrar deneyin.');
+    message.warning('Tarayıcı sesi engelledi. Sayfayla etkileşime geçip tekrar deneyin.');
   };
 
   const actionColumn = (type) => ({
@@ -542,7 +542,7 @@ function AdminDashboard() {
               {realtimeStatus === 'connected' ? 'Canlı bağlantı açık' : 'Canlı bağlantı kapalı'}
             </Tag>
             <Button icon={<SoundOutlined />} type={soundEnabled ? 'default' : 'primary'} onClick={testNotificationSound}>
-              {soundEnabled ? 'Ses Testi' : 'Sesi AÃ§'}
+              {soundEnabled ? 'Ses Testi' : 'Sesi Aç'}
             </Button>
             <Button icon={<ReloadOutlined />} onClick={() => loadScopedData()}>
               Yenile
