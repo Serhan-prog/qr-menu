@@ -1,14 +1,37 @@
 import { Button, Card, Form, Input, Typography, message } from 'antd';
 import { LockOutlined, LoginOutlined, MailOutlined } from '@ant-design/icons';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { qrMenuApi } from '../api/qrMenuApi.js';
 import { apiError } from '../utils/format.js';
 import { saveAuth } from '../utils/auth.js';
+import { restaurantDisplayName, restaurantInitials } from '../utils/brand.js';
 
 const { Title, Text } = Typography;
 
 function Login() {
   const navigate = useNavigate();
+  const [restaurant, setRestaurant] = useState(null);
+  const restaurantName = restaurantDisplayName(restaurant?.name);
+
+  useEffect(() => {
+    let mounted = true;
+
+    qrMenuApi.getPublicRestaurant()
+      .then((response) => {
+        if (mounted) {
+          setRestaurant(response);
+          document.title = `${restaurantDisplayName(response.name)} | Admin`;
+        }
+      })
+      .catch(() => {
+        document.title = `${restaurantDisplayName()} | Admin`;
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const onFinish = async (values) => {
     try {
@@ -26,9 +49,9 @@ function Login() {
     <main className="login-page">
       <section className="login-shell">
         <div className="login-brand">
-          <span className="brand-mark">SR</span>
+          <span className="brand-mark">{restaurantInitials(restaurantName)}</span>
           <div>
-            <Title level={1}>Semua Restorant</Title>
+            <Title level={1}>{restaurantName}</Title>
             <Text>QR menü, mutfak ve servis operasyonları için yönetim paneli.</Text>
           </div>
         </div>

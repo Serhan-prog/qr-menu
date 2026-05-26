@@ -7,6 +7,7 @@ export const qrMenuApi = {
   getWebSocketTicket: () => api.get('/api/auth/ws-ticket').then((res) => res.data),
 
   getRestaurants: () => api.get('/api/restaurants').then((res) => res.data),
+  getPublicRestaurant: () => api.get('/api/restaurants/public').then((res) => res.data),
   getCurrentRestaurant: () => api.get('/api/restaurants/current').then((res) => res.data),
   createRestaurant: (payload) => api.post('/api/restaurants', payload).then((res) => res.data),
   updateRestaurant: (id, payload) => api.put(`/api/restaurants/${id}`, payload).then((res) => res.data),

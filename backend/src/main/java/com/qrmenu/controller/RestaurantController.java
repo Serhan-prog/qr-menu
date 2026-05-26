@@ -34,6 +34,11 @@ public class RestaurantController {
         return restaurantService.current();
     }
 
+    @GetMapping("/public")
+    public RestaurantResponse publicCurrent() {
+        return restaurantService.publicCurrent();
+    }
+
     @GetMapping("/{id}")
     public RestaurantResponse findById(@PathVariable Long id) {
         return restaurantService.findById(id);

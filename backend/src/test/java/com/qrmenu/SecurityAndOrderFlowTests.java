@@ -132,6 +132,14 @@ class SecurityAndOrderFlowTests {
     }
 
     @Test
+    void publicRestaurantBrandingCanBeReadWithoutLogin() throws Exception {
+        mockMvc.perform(get("/api/restaurants/public"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(restaurant.getId()))
+                .andExpect(jsonPath("$.name").value("Semua Restorant"));
+    }
+
+    @Test
     void orderTrackingUsesPublicTrackingCodeInsteadOfPublicId() throws Exception {
         Cookie authCookie = loginCookie();
 

@@ -73,6 +73,12 @@ function Menu() {
   }, [tableCode]);
 
   useEffect(() => {
+    if (menu?.restaurantName) {
+      document.title = `${menu.restaurantName} | Masa ${menu.tableNumber}`;
+    }
+  }, [menu?.restaurantName, menu?.tableNumber]);
+
+  useEffect(() => {
     if (orders.length === 0) {
       return undefined;
     }

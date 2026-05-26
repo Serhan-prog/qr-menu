@@ -29,6 +29,14 @@ public class RestaurantService {
     }
 
     @Transactional(readOnly = true)
+    public RestaurantResponse publicCurrent() {
+        Restaurant restaurant = restaurantRepository.findFirstByActiveTrueOrderByIdAsc()
+                .or(() -> restaurantRepository.findFirstByOrderByIdAsc())
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
+        return toResponse(restaurant);
+    }
+
+    @Transactional(readOnly = true)
     public Restaurant getEntity(Long id) {
         return restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found: " + id));

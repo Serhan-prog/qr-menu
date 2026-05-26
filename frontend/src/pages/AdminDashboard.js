@@ -47,6 +47,7 @@ import { connectAdminNotifications } from '../api/adminRealtime.js';
 import { qrMenuApi } from '../api/qrMenuApi.js';
 import { apiError, currency, dateTime } from '../utils/format.js';
 import { clearAuth, getUser } from '../utils/auth.js';
+import { restaurantDisplayName, restaurantInitials } from '../utils/brand.js';
 import {
   enableNotificationSound,
   isNotificationSoundReady,
@@ -80,10 +81,15 @@ function AdminDashboard() {
   const isAdmin = user?.role === 'ADMIN';
 
   const restaurantId = restaurant?.id;
+  const restaurantName = restaurantDisplayName(restaurant?.name);
 
   useEffect(() => {
     loadAll();
   }, []);
+
+  useEffect(() => {
+    document.title = `${restaurantName} | Yönetim`;
+  }, [restaurantName]);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -497,9 +503,9 @@ function AdminDashboard() {
     <Layout className="admin-layout">
       <Sider className="admin-sider" width={280}>
         <div className="admin-brand">
-          <span className="brand-mark">SR</span>
+          <span className="brand-mark">{restaurantInitials(restaurantName)}</span>
           <div>
-            <strong>{restaurant?.name || 'Semua Restorant'}</strong>
+            <strong>{restaurantName}</strong>
             <Text>{isAdmin ? 'Yönetim Paneli' : 'Operasyon Paneli'}</Text>
           </div>
         </div>
@@ -530,7 +536,7 @@ function AdminDashboard() {
       <Layout className="admin-main-layout">
         <Header className="admin-header">
           <div>
-            <Title level={3}>{restaurant?.name || 'Semua Restorant'}</Title>
+            <Title level={3}>{restaurantName}</Title>
             <Text>
               {user?.fullName || 'Personel'} - {isAdmin
                 ? 'Mutfak, sipariş, masa, QR, menü ve ekip yönetimi'

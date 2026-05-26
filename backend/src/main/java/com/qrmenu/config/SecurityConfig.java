@@ -59,6 +59,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/orders/track/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/waiter-calls").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/bill-requests").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants/public").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/restaurants/current").authenticated()
                         .requestMatchers("/api/users/**", "/api/restaurants/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST,
