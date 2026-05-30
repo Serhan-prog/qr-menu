@@ -6,11 +6,14 @@ import { qrMenuApi } from '../api/qrMenuApi.js';
 import { apiError } from '../utils/format.js';
 import { saveAuth } from '../utils/auth.js';
 import { restaurantDisplayName, restaurantInitials } from '../utils/brand.js';
+import PreferenceControls from '../components/PreferenceControls.js';
+import { usePreferences } from '../context/PreferencesContext.js';
 
 const { Title, Text } = Typography;
 
 function Login() {
   const navigate = useNavigate();
+  const { t } = usePreferences();
   const [restaurant, setRestaurant] = useState(null);
   const restaurantName = restaurantDisplayName(restaurant?.name);
 
@@ -38,7 +41,7 @@ function Login() {
       const auth = await qrMenuApi.login(values);
       saveAuth(auth);
       await qrMenuApi.refreshCsrfToken();
-      message.success('Giriş başarılı');
+      message.success(t('login.success'));
       navigate('/admin');
     } catch (error) {
       message.error(apiError(error));
@@ -47,32 +50,33 @@ function Login() {
 
   return (
     <main className="login-page">
+      <PreferenceControls className="login-preferences" />
       <section className="login-shell">
         <div className="login-brand">
           <span className="brand-mark">{restaurantInitials(restaurantName)}</span>
           <div>
             <Title level={1}>{restaurantName}</Title>
-            <Text>QR menü, mutfak ve servis operasyonları için yönetim paneli.</Text>
+            <Text>{t('login.description')}</Text>
           </div>
         </div>
 
         <Card className="login-card">
           <div className="login-card-head">
-            <Title level={3}>Admin Girişi</Title>
-            <Text>Yetkili hesabınızla devam edin.</Text>
+            <Title level={3}>{t('login.title')}</Title>
+            <Text>{t('login.subtitle')}</Text>
           </div>
           <Form
             layout="vertical"
             onFinish={onFinish}
           >
-            <Form.Item label="E-posta" name="email" rules={[{ required: true, message: 'E-posta zorunlu' }]}>
+            <Form.Item label={t('login.email')} name="email" rules={[{ required: true, message: t('login.emailRequired') }]}>
               <Input size="large" prefix={<MailOutlined />} placeholder="admin@qrmenu.local" />
             </Form.Item>
-            <Form.Item label="Şifre" name="password" rules={[{ required: true, message: 'Şifre zorunlu' }]}>
-              <Input.Password size="large" prefix={<LockOutlined />} placeholder="Şifre" />
+            <Form.Item label={t('login.password')} name="password" rules={[{ required: true, message: t('login.passwordRequired') }]}>
+              <Input.Password size="large" prefix={<LockOutlined />} placeholder={t('login.password')} />
             </Form.Item>
             <Button type="primary" htmlType="submit" icon={<LoginOutlined />} size="large" block>
-              Giriş Yap
+              {t('login.submit')}
             </Button>
           </Form>
         </Card>

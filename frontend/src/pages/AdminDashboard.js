@@ -50,6 +50,8 @@ import { qrMenuApi } from '../api/qrMenuApi.js';
 import { apiError, currency, dateTime } from '../utils/format.js';
 import { clearAuth, getUser } from '../utils/auth.js';
 import { restaurantDisplayName, restaurantInitials } from '../utils/brand.js';
+import PreferenceControls from '../components/PreferenceControls.js';
+import { usePreferences } from '../context/PreferencesContext.js';
 import {
   enableNotificationSound,
   isNotificationSoundReady,
@@ -63,6 +65,7 @@ const orderStatuses = ['PENDING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED'];
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const { t } = usePreferences();
   const [loading, setLoading] = useState(false);
   const [restaurant, setRestaurant] = useState(null);
   const [tables, setTables] = useState([]);
@@ -91,8 +94,8 @@ function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    document.title = `${restaurantName} | Yönetim`;
-  }, [restaurantName]);
+    document.title = `${restaurantName} | ${t('admin.managementPanel')}`;
+  }, [restaurantName, t]);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -217,6 +220,9 @@ function AdminDashboard() {
       }
       if (modal.type === 'user') {
         const payload = { ...values, restaurantId };
+        if (modal.record && !payload.password) {
+          delete payload.password;
+        }
         modal.record ? await qrMenuApi.updateUser(modal.record.id, payload) : await qrMenuApi.createUser(payload);
         await loadScopedData();
       }
@@ -328,7 +334,7 @@ function AdminDashboard() {
   const tabs = [
     {
       key: 'overview',
-      label: 'Operasyon',
+      label: t('admin.tabs.overview'),
       icon: <ShopOutlined />,
       children: (
         <div className="dashboard-grid">
@@ -348,10 +354,10 @@ function AdminDashboard() {
     },
     {
       key: 'orders',
-      label: 'Sipariş Geçmişi',
+      label: t('admin.tabs.orders'),
       icon: <ShoppingOutlined />,
       children: (
-        <DataSection title="Sipariş Geçmişi">
+        <DataSection title={t('admin.tabs.orders')}>
           <OrdersTable
             loading={loading}
             orders={orders}
@@ -361,7 +367,7 @@ function AdminDashboard() {
     },
     {
       key: 'requests',
-      label: 'İstek Geçmişi',
+      label: t('admin.tabs.requests'),
       icon: <HistoryOutlined />,
       children: (
         <RequestsHistory
@@ -373,14 +379,14 @@ function AdminDashboard() {
     },
     {
       key: 'feedbacks',
-      label: 'Puanlar',
+      label: t('admin.tabs.feedbacks'),
       icon: <StarOutlined />,
       children: <FeedbackSection loading={loading} feedbacks={feedbacks} />,
     },
     {
       key: 'tables',
       adminOnly: true,
-      label: 'Masalar ve QR',
+      label: t('admin.tabs.tables'),
       icon: <TableOutlined />,
       children: (
         <DataSection title="Masalar" onAdd={() => openModal('table')}>
@@ -409,10 +415,10 @@ function AdminDashboard() {
     {
       key: 'categories',
       adminOnly: true,
-      label: 'Kategoriler',
+      label: t('admin.tabs.categories'),
       icon: <BarsOutlined />,
       children: (
-        <DataSection title="Kategoriler" onAdd={() => openModal('category')}>
+        <DataSection title={t('admin.tabs.categories')} onAdd={() => openModal('category')}>
           <Table
             size="middle"
             scroll={{ x: 640 }}
@@ -433,10 +439,10 @@ function AdminDashboard() {
     {
       key: 'products',
       adminOnly: true,
-      label: 'Ürünler',
+      label: t('admin.tabs.products'),
       icon: <AppstoreOutlined />,
       children: (
-        <DataSection title="Ürünler" onAdd={() => openModal('product')}>
+        <DataSection title={t('admin.tabs.products')} onAdd={() => openModal('product')}>
           <Table
             size="middle"
             scroll={{ x: 640 }}
@@ -458,7 +464,7 @@ function AdminDashboard() {
     {
       key: 'users',
       adminOnly: true,
-      label: 'Ekip',
+      label: t('admin.tabs.users'),
       icon: <TeamOutlined />,
       children: (
         <DataSection title="Kullanıcılar" onAdd={() => openModal('user')}>
@@ -483,7 +489,7 @@ function AdminDashboard() {
     {
       key: 'restaurant',
       adminOnly: true,
-      label: 'Restoran',
+      label: t('admin.tabs.restaurant'),
       icon: <ShopOutlined />,
       children: (
         <DataSection title="Restoran Bilgisi">
@@ -513,16 +519,16 @@ function AdminDashboard() {
           <span className="brand-mark">{restaurantInitials(restaurantName)}</span>
           <div>
             <strong>{restaurantName}</strong>
-            <Text>{isAdmin ? 'Yönetim Paneli' : 'Operasyon Paneli'}</Text>
+            <Text>{isAdmin ? t('admin.managementPanel') : t('admin.operationsPanel')}</Text>
           </div>
         </div>
         <div className="admin-sider-summary">
           <div className="sider-summary-card">
-            <span><BellOutlined /> Bekleyen</span>
+            <span><BellOutlined /> {t('admin.pending')}</span>
             <strong>{waitingRequests}</strong>
           </div>
           <div className="sider-summary-card">
-            <span><FireOutlined /> Aktif Sipariş</span>
+            <span><FireOutlined /> {t('admin.activeOrder')}</span>
             <strong>{activeOrders.length}</strong>
           </div>
         </div>
@@ -536,7 +542,7 @@ function AdminDashboard() {
         <div className="admin-sider-footer">
           <Text>{user?.fullName || 'Personel'} - {roleLabel(user?.role)}</Text>
           <Button block danger icon={<LogoutOutlined />} onClick={logout}>
-            Çıkış
+            {t('common.logout')}
           </Button>
         </div>
       </Sider>
@@ -545,23 +551,24 @@ function AdminDashboard() {
           <div>
             <Title level={3}>{restaurantName}</Title>
             <Text>
-              {user?.fullName || 'Personel'} - {isAdmin
-                ? 'Mutfak, sipariş, masa, QR, menü ve ekip yönetimi'
-                : 'Mutfak, sipariş ve müşteri istekleri'}
+              {user?.fullName || t('common.staff')} - {isAdmin
+                ? t('admin.adminSubtitle')
+                : t('admin.staffSubtitle')}
             </Text>
           </div>
           <Space className="admin-header-actions" wrap>
+            <PreferenceControls />
             <Tag color={realtimeStatus === 'connected' ? 'green' : 'default'}>
-              {realtimeStatus === 'connected' ? 'Canlı bağlantı açık' : 'Canlı bağlantı kapalı'}
+              {realtimeStatus === 'connected' ? t('admin.realtimeOn') : t('admin.realtimeOff')}
             </Tag>
             <Button icon={<SoundOutlined />} type={soundEnabled ? 'default' : 'primary'} onClick={testNotificationSound}>
-              {soundEnabled ? 'Ses Testi' : 'Sesi Aç'}
+              {soundEnabled ? t('admin.soundTest') : t('admin.enableSound')}
             </Button>
             <Button icon={<ReloadOutlined />} onClick={() => loadScopedData()}>
-              Yenile
+              {t('common.refresh')}
             </Button>
             <Button danger icon={<LogoutOutlined />} onClick={logout}>
-              Çıkış
+              {t('common.logout')}
             </Button>
           </Space>
         </Header>
@@ -575,24 +582,24 @@ function AdminDashboard() {
           />
           <div className="admin-page-title">
             <div>
-              <Text className="page-kicker">Canlı Operasyon</Text>
+              <Text className="page-kicker">{t('admin.liveOperation')}</Text>
               <Title level={2}>{tabs.find((tab) => tab.key === activeTab)?.label}</Title>
             </div>
             <Space className="admin-title-tags" wrap>
-              {isAdmin && <Tag icon={<HomeOutlined />} color="green">{tables.length} masa</Tag>}
-              {!isAdmin && <Tag icon={<ShoppingOutlined />} color="gold">{activeOrders.length} aktif sipariş</Tag>}
-              <Tag icon={<ProfileOutlined />} color="blue">{servedOrders} servis edildi</Tag>
-              <Tag icon={<StarOutlined />} color="gold">{feedbacks.length} puan</Tag>
+              {isAdmin && <Tag icon={<HomeOutlined />} color="green">{tables.length} {t('admin.tables')}</Tag>}
+              {!isAdmin && <Tag icon={<ShoppingOutlined />} color="gold">{activeOrders.length} {t('admin.activeOrders')}</Tag>}
+              <Tag icon={<ProfileOutlined />} color="blue">{servedOrders} {t('admin.served')}</Tag>
+              <Tag icon={<StarOutlined />} color="gold">{feedbacks.length} {t('admin.ratings')}</Tag>
             </Space>
           </div>
           <div className="stats-grid">
-            {isAdmin && <Card className="metric-card"><Statistic title="Masa" value={tables.length} prefix={<TableOutlined />} /></Card>}
-            {isAdmin && <Card className="metric-card"><Statistic title="Ürün" value={products.length} prefix={<AppstoreOutlined />} /></Card>}
-            {!isAdmin && <Card className="metric-card"><Statistic title="Sipariş" value={orders.length} prefix={<ProfileOutlined />} /></Card>}
-            {!isAdmin && <Card className="metric-card"><Statistic title="Servis Edildi" value={servedOrders} prefix={<TableOutlined />} /></Card>}
-            <Card className="metric-card"><Statistic title="Aktif Sipariş" value={activeOrders.length} prefix={<ShoppingOutlined />} /></Card>
-            <Card className="metric-card alert-metric"><Statistic title="Bekleyen İstek" value={waitingRequests} prefix={<BellOutlined />} /></Card>
-            <Card className="metric-card"><Statistic title="Genel Puan" value={average(feedbacks, 'overallRating')} precision={1} prefix={<StarOutlined />} /></Card>
+            {isAdmin && <Card className="metric-card"><Statistic title={t('admin.tableMetric')} value={tables.length} prefix={<TableOutlined />} /></Card>}
+            {isAdmin && <Card className="metric-card"><Statistic title={t('admin.productMetric')} value={products.length} prefix={<AppstoreOutlined />} /></Card>}
+            {!isAdmin && <Card className="metric-card"><Statistic title={t('admin.orderMetric')} value={orders.length} prefix={<ProfileOutlined />} /></Card>}
+            {!isAdmin && <Card className="metric-card"><Statistic title={t('admin.servedMetric')} value={servedOrders} prefix={<TableOutlined />} /></Card>}
+            <Card className="metric-card"><Statistic title={t('admin.activeOrder')} value={activeOrders.length} prefix={<ShoppingOutlined />} /></Card>
+            <Card className="metric-card alert-metric"><Statistic title={t('admin.pendingRequestMetric')} value={waitingRequests} prefix={<BellOutlined />} /></Card>
+            <Card className="metric-card"><Statistic title={t('admin.overallRating')} value={average(feedbacks, 'overallRating')} precision={1} prefix={<StarOutlined />} /></Card>
           </div>
           <Tabs className="admin-tabs" activeKey={activeTab} items={tabs} renderTabBar={() => null} />
         </Content>
@@ -603,8 +610,8 @@ function AdminDashboard() {
         open={Boolean(modal.type)}
         onCancel={closeModal}
         onOk={saveModal}
-        okText="Kaydet"
-        cancelText="Vazgeç"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
@@ -612,7 +619,7 @@ function AdminDashboard() {
           {modal.type === 'table' && <TableFields />}
           {modal.type === 'category' && <CategoryFields />}
           {modal.type === 'product' && <ProductFields categories={categories} />}
-          {modal.type === 'user' && <UserFields />}
+          {modal.type === 'user' && <UserFields isEditing={Boolean(modal.record)} />}
         </Form>
       </Modal>
 
@@ -867,7 +874,7 @@ function ProductFields({ categories }) {
   );
 }
 
-function UserFields() {
+function UserFields({ isEditing }) {
   return (
     <>
       <Form.Item name="fullName" label="Ad Soyad" rules={[{ required: true, message: 'Ad soyad zorunlu' }]}>
@@ -876,7 +883,12 @@ function UserFields() {
       <Form.Item name="email" label="E-posta" rules={[{ required: true, message: 'E-posta zorunlu' }, { type: 'email', message: 'Geçerli e-posta girin' }]}>
         <Input />
       </Form.Item>
-      <Form.Item name="password" label="Parola" rules={[{ required: true, message: 'Kaydetmek için parola girin' }]}>
+      <Form.Item
+        name="password"
+        label="Parola"
+        extra={isEditing ? 'Boş bırakırsanız mevcut parola korunur.' : undefined}
+        rules={isEditing ? [] : [{ required: true, message: 'Kaydetmek için parola girin' }]}
+      >
         <Input.Password />
       </Form.Item>
       <Form.Item name="role" label="Rol" rules={[{ required: true, message: 'Rol zorunlu' }]}>

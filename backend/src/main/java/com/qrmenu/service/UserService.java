@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -47,6 +48,9 @@ public class UserService {
     @Transactional
     public UserResponse create(UserRequest request) {
         authContextService.assertRestaurantAccess(request.restaurantId());
+        if (!StringUtils.hasText(request.password())) {
+            throw new BadRequestException("Password is required");
+        }
         if (userRepository.existsByEmail(request.email())) {
             throw new BadRequestException("Email already exists");
         }
@@ -76,7 +80,7 @@ public class UserService {
         if (authContextService.currentUser().map(current -> current.getId().equals(id)).orElse(false)) {
             throw new BadRequestException("Current user cannot be deleted");
         }
-        user.setActive(false);
+        userRepository.delete(user);
     }
 
     private void apply(User user, UserRequest request) {
@@ -84,7 +88,9 @@ public class UserService {
         user.setRestaurant(restaurant);
         user.setEmail(request.email());
         user.setFullName(request.fullName());
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        if (StringUtils.hasText(request.password())) {
+            user.setPasswordHash(passwordEncoder.encode(request.password()));
+        }
         user.setRole(request.role() == null ? UserRole.ADMIN : request.role());
         if (request.active() != null) {
             user.setActive(request.active());

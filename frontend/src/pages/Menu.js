@@ -33,6 +33,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { qrMenuApi } from '../api/qrMenuApi.js';
 import { apiError, currency, dateTime } from '../utils/format.js';
+import PreferenceControls from '../components/PreferenceControls.js';
+import { usePreferences } from '../context/PreferencesContext.js';
 
 const { Content } = Layout;
 const { Text, Title } = Typography;
@@ -45,10 +47,10 @@ const categoryImages = {
 };
 
 const statusSteps = [
-  { key: 'PENDING', label: 'Alındı' },
-  { key: 'PREPARING', label: 'Hazırlanıyor' },
-  { key: 'READY', label: 'Hazır' },
-  { key: 'SERVED', label: 'Servis Edildi' },
+  { key: 'PENDING' },
+  { key: 'PREPARING' },
+  { key: 'READY' },
+  { key: 'SERVED' },
 ];
 
 const ORDER_STORAGE_PREFIX = 'qr_menu_table_orders:';
@@ -56,6 +58,7 @@ const FINAL_ORDER_STATUSES = ['CANCELLED'];
 
 function Menu() {
   const { tableCode } = useParams();
+  const { t } = usePreferences();
   const [menu, setMenu] = useState(null);
   const [menuError, setMenuError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +70,7 @@ function Menu() {
   const [requestModal, setRequestModal] = useState(null);
   const [requestNote, setRequestNote] = useState('');
   const [search, setSearch] = useState('');
-  const [view, setView] = useState('Menü');
+  const [view, setView] = useState('menu');
   const [feedbackDrafts, setFeedbackDrafts] = useState({});
   const [submittingFeedback, setSubmittingFeedback] = useState(null);
 
@@ -78,9 +81,9 @@ function Menu() {
 
   useEffect(() => {
     if (menu?.restaurantName) {
-      document.title = `${menu.restaurantName} | Masa ${menu.tableNumber}`;
+      document.title = `${menu.restaurantName} | ${t('menu.table')} ${menu.tableNumber}`;
     }
-  }, [menu?.restaurantName, menu?.tableNumber]);
+  }, [menu?.restaurantName, menu?.tableNumber, t]);
 
   useEffect(() => {
     if (orders.length === 0) {
@@ -146,7 +149,7 @@ function Menu() {
       syncStoredTrackingCodes(tableCode, restoredOrders);
       setOrders(restoredOrders);
       if (restoredOrders.length > 0) {
-        setView('Siparişlerim');
+        setView('orders');
       }
     } catch {
       // Restoring tracked orders must not block menu usage.
@@ -166,8 +169,8 @@ function Menu() {
         const previousOrder = orders.find((order) => order.trackingCode === freshOrder.trackingCode);
         if (previousOrder?.status !== 'CANCELLED' && freshOrder.status === 'CANCELLED') {
           Modal.warning({
-            title: 'Siparişiniz iptal edildi',
-            content: freshOrder.cancellationReason || 'Restoran siparişinizi iptal etti.',
+            title: t('menu.cancelled'),
+            content: freshOrder.cancellationReason || t('menu.cancelledDescription'),
           });
         }
       });
@@ -188,7 +191,7 @@ function Menu() {
       }
       return [...current, { productId: product.id, name: product.name, price: product.price, quantity: 1, note: '' }];
     });
-    message.success(`${product.name} sepete eklendi`);
+    message.success(`${product.name} ${t('menu.addedToCart')}`);
   };
 
   const updateQuantity = (productId, quantity) => {
@@ -207,7 +210,7 @@ function Menu() {
 
   const submitOrder = async () => {
     if (cart.length === 0) {
-      message.warning('Sepet boş');
+      message.warning(t('menu.cartEmpty'));
       return;
     }
     setSubmitting(true);
@@ -226,8 +229,8 @@ function Menu() {
       setCart([]);
       setOrderNote('');
       setCartOpen(false);
-      setView('Siparişlerim');
-      Modal.success({ title: 'Sipariş alındı', content: 'Siparişiniz mutfağa iletildi. Durumunu bu ekrandan takip edebilirsiniz.' });
+      setView('orders');
+      Modal.success({ title: t('menu.orderReceived'), content: t('menu.orderSent') });
     } catch (error) {
       message.error(apiError(error));
     } finally {
@@ -252,14 +255,14 @@ function Menu() {
           tableCode,
           message: requestNote.trim() || 'Müşteri garson çağırıyor',
         });
-        message.success('Garson çağrıldı');
+        message.success(t('menu.waiterCalled'));
       }
       if (requestModal === 'bill') {
         await qrMenuApi.createBillRequest({
           tableCode,
           note: requestNote.trim() || 'Müşteri hesap istiyor',
         });
-        message.success('Hesap isteği gönderildi');
+        message.success(t('menu.billSent'));
       }
       closeRequestModal();
     } catch (error) {
@@ -294,7 +297,7 @@ function Menu() {
       setOrders((current) =>
         current.map((item) => item.trackingCode === order.trackingCode ? { ...item, feedbackSubmitted: true } : item)
       );
-      message.success('Puanınız için teşekkürler');
+      message.success(t('menu.feedbackThanks'));
     } catch (error) {
       message.error(apiError(error));
     } finally {
@@ -310,8 +313,8 @@ function Menu() {
     return (
       <Result
         status="404"
-        title="Menü erişime kapalı"
-        subTitle={menuError || 'Bu QR kod için aktif bir masa menüsü bulunamadı.'}
+        title={t('menu.unavailableTitle')}
+        subTitle={menuError || t('menu.unavailableSubtitle')}
       />
     );
   }
@@ -319,15 +322,16 @@ function Menu() {
   return (
     <Layout className="menu-page visual-menu-page">
       <section className="menu-hero">
+        <PreferenceControls className="menu-preferences" />
         <div className="menu-hero-overlay">
-          <Tag color="gold">Masa {menu.tableNumber}</Tag>
+          <Tag color="gold">{t('menu.table')} {menu.tableNumber}</Tag>
           <Title>{menu.restaurantName}</Title>
-          <Text>QR menüden sipariş verin, garson çağırın ve sipariş durumunu anlık takip edin.</Text>
+          <Text>{t('menu.hero')}</Text>
           <div className="menu-hero-actions">
-            <Button icon={<BellOutlined />} onClick={() => openRequestModal('waiter')}>Garson Çağır</Button>
-            <Button icon={<WalletOutlined />} onClick={() => openRequestModal('bill')}>Hesap İste</Button>
+            <Button icon={<BellOutlined />} onClick={() => openRequestModal('waiter')}>{t('menu.callWaiter')}</Button>
+            <Button icon={<WalletOutlined />} onClick={() => openRequestModal('bill')}>{t('menu.requestBill')}</Button>
             <Badge count={cartCount}>
-              <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)}>Sepet</Button>
+              <Button type="primary" icon={<ShoppingCartOutlined />} onClick={() => setCartOpen(true)}>{t('menu.cart')}</Button>
             </Badge>
           </div>
         </div>
@@ -335,18 +339,25 @@ function Menu() {
 
       <Content className="menu-content visual-menu-content">
         <div className="menu-toolbar">
-          <Segmented value={view} onChange={setView} options={['Menü', 'Siparişlerim']} />
+          <Segmented
+            value={view}
+            onChange={setView}
+            options={[
+              { label: t('menu.menu'), value: 'menu' },
+              { label: t('menu.myOrders'), value: 'orders' },
+            ]}
+          />
           <Input
             className="menu-search"
             size="large"
             prefix={<SearchOutlined />}
-            placeholder="Ürün ara"
+            placeholder={t('menu.search')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
 
-        {view === 'Menü' && (
+        {view === 'menu' && (
           <Tabs
             className="menu-tabs"
             items={filteredCategories.map((category) => ({
@@ -354,7 +365,7 @@ function Menu() {
               label: category.name,
               children: (
                 <div className="visual-product-grid">
-                  {category.products.length === 0 && <Empty description="Bu kategoride ürün yok" />}
+                  {category.products.length === 0 && <Empty description={t('menu.emptyCategory')} />}
                   {category.products.map((product) => (
                     <article className="visual-product-card" key={product.id}>
                       <div
@@ -369,7 +380,7 @@ function Menu() {
                         <div className="product-footer">
                           <strong>{currency(product.price)}</strong>
                           <Button type="primary" icon={<PlusOutlined />} onClick={() => addToCart(product)}>
-                            Ekle
+                            {t('menu.add')}
                           </Button>
                         </div>
                       </div>
@@ -381,25 +392,25 @@ function Menu() {
           />
         )}
 
-        {view === 'Siparişlerim' && (
+        {view === 'orders' && (
           <div className="order-track-list">
-            {orders.length === 0 && <Empty description="Henüz sipariş verilmedi" />}
+            {orders.length === 0 && <Empty description={t('menu.noOrders')} />}
             {orders.map((order) => (
               <article className="order-track-card" key={order.id}>
                 <div className="order-track-head">
                   <div>
-                    <Title level={4}>Sipariş #{order.id}</Title>
+                    <Title level={4}>{t('menu.order')} #{order.id}</Title>
                     <Text>{dateTime(order.createdAt)}</Text>
                   </div>
-                  <Tag color={statusColor(order.status)}>{statusLabel(order.status)}</Tag>
+                  <Tag color={statusColor(order.status)}>{t(`status.${order.status}`)}</Tag>
                 </div>
                 {order.status === 'CANCELLED' && (
                   <Alert
                     className="cancelled-order-alert"
                     type="error"
                     showIcon
-                    message="Sipariş iptal edildi"
-                    description={order.cancellationReason || 'Restoran siparişinizi iptal etti.'}
+                    message={t('menu.cancelled')}
+                    description={order.cancellationReason || t('menu.cancelledDescription')}
                   />
                 )}
                 <Progress
@@ -411,7 +422,7 @@ function Menu() {
                   className="order-timeline"
                   items={statusSteps.map((step) => ({
                     color: statusSteps.findIndex((item) => item.key === order.status) >= statusSteps.findIndex((item) => item.key === step.key) ? 'green' : 'gray',
-                    children: step.label,
+                    children: t(`status.${step.key}`),
                   }))}
                 />
                 {order.note && <Text className="order-customer-note"><strong>Sipariş notu:</strong> {order.note}</Text>}
@@ -429,7 +440,7 @@ function Menu() {
                   )}
                 />
                 <div className="order-track-total">
-                  <Text>Toplam</Text>
+                  <Text>{t('menu.total')}</Text>
                   <strong>{currency(order.totalAmount)}</strong>
                 </div>
                 {order.status === 'SERVED' && !order.feedbackSubmitted && (
@@ -445,8 +456,8 @@ function Menu() {
                     className="feedback-thanks-alert"
                     type="success"
                     showIcon
-                    message="Değerlendirmeniz alındı"
-                    description="Geri bildiriminiz restoran yönetimine iletildi."
+                    message={t('menu.feedbackReceived')}
+                    description={t('menu.feedbackDescription')}
                   />
                 )}
               </article>
@@ -461,7 +472,7 @@ function Menu() {
         icon={<ShoppingCartOutlined />}
         onClick={() => setCartOpen(true)}
       >
-        Sepet {cartCount > 0 ? `(${cartCount})` : ''}
+        {t('menu.cart')} {cartCount > 0 ? `(${cartCount})` : ''}
       </Button>
 
       <Drawer
@@ -469,8 +480,8 @@ function Menu() {
           <div className="cart-drawer-title">
             <ShoppingCartOutlined />
             <div>
-              <strong>Sepet</strong>
-              <Text>{cartCount > 0 ? `${cartCount} ürün seçildi` : 'Siparişiniz burada hazırlanır'}</Text>
+              <strong>{t('menu.cart')}</strong>
+              <Text>{cartCount > 0 ? `${cartCount} ${t('menu.cartSelected')}` : t('menu.cartDraft')}</Text>
             </div>
           </div>
         }
@@ -482,11 +493,11 @@ function Menu() {
         footer={
           <div className="cart-footer">
             <div className="cart-total">
-              <Text>Ödenecek Toplam</Text>
+              <Text>{t('menu.payableTotal')}</Text>
               <strong>{currency(total)}</strong>
             </div>
             <Button size="large" type="primary" icon={<CheckCircleOutlined />} loading={submitting} onClick={submitOrder}>
-              Sipariş Ver
+              {t('menu.placeOrder')}
             </Button>
           </div>
         }
@@ -495,14 +506,14 @@ function Menu() {
           <List
             className="cart-list"
             dataSource={cart}
-            locale={{ emptyText: 'Sepet boş' }}
+            locale={{ emptyText: t('menu.cartEmpty') }}
             renderItem={(item) => (
               <List.Item className="cart-line-item">
                 <article className="cart-line-card">
                   <div className="cart-line-head">
                     <div>
                       <Title level={5}>{item.name}</Title>
-                      <Text>{currency(item.price)} birim fiyat</Text>
+                      <Text>{currency(item.price)} {t('menu.unitPrice')}</Text>
                     </div>
                     <strong>{currency(Number(item.price) * item.quantity)}</strong>
                   </div>
@@ -517,7 +528,7 @@ function Menu() {
                   <Input.TextArea
                     maxLength={500}
                     rows={2}
-                    placeholder="Ürün notu"
+                    placeholder={t('menu.productNote')}
                     value={item.note}
                     onChange={(event) => updateItemNote(item.productId, event.target.value)}
                   />
@@ -526,11 +537,11 @@ function Menu() {
             )}
           />
           <div className="cart-order-note">
-            <Text strong>Sipariş Notu</Text>
+            <Text strong>{t('menu.orderNote')}</Text>
             <Input.TextArea
               maxLength={1000}
               rows={3}
-              placeholder="Örn. hepsi birlikte gelsin"
+              placeholder={t('menu.orderNotePlaceholder')}
               value={orderNote}
               onChange={(event) => setOrderNote(event.target.value)}
             />
@@ -538,17 +549,17 @@ function Menu() {
         </div>
       </Drawer>
       <Modal
-        title={requestModal === 'bill' ? 'Hesap İste' : 'Garson Çağır'}
+        title={requestModal === 'bill' ? t('menu.requestBill') : t('menu.callWaiter')}
         open={Boolean(requestModal)}
         onCancel={closeRequestModal}
         onOk={submitServiceRequest}
-        okText="Gönder"
-        cancelText="Vazgeç"
+        okText={t('menu.send')}
+        cancelText={t('common.cancel')}
       >
         <Input.TextArea
           maxLength={500}
           rows={3}
-          placeholder={requestModal === 'bill' ? 'Hesap isteğine not ekleyin' : 'Garsona mesaj ekleyin'}
+          placeholder={requestModal === 'bill' ? t('menu.billNote') : t('menu.waiterNote')}
           value={requestNote}
           onChange={(event) => setRequestNote(event.target.value)}
         />
