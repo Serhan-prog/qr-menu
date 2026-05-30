@@ -7,7 +7,12 @@ export const languages = [
   { value: 'tr', label: 'Türkçe' },
   { value: 'en', label: 'English' },
   { value: 'de', label: 'Deutsch' },
+  { value: 'ar', label: 'العربية' },
 ];
+
+export const languageDirections = {
+  ar: 'rtl',
+};
 
 const translations = {
   tr: {
@@ -331,6 +336,113 @@ const translations = {
       CANCELLED: 'Storniert',
     },
   },
+  ar: {
+    common: {
+      language: 'اللغة',
+      theme: 'المظهر',
+      light: 'فاتح',
+      dark: 'داكن',
+      refresh: 'تحديث',
+      logout: 'تسجيل الخروج',
+      save: 'حفظ',
+      cancel: 'إلغاء',
+      close: 'إغلاق',
+      openMenu: 'فتح القائمة',
+      staff: 'الموظف',
+      admin: 'المدير',
+    },
+    login: {
+      title: 'تسجيل دخول الإدارة',
+      subtitle: 'تابع باستخدام حسابك المصرح.',
+      description: 'لوحة إدارة لقائمة QR والمطبخ وعمليات الخدمة.',
+      email: 'البريد الإلكتروني',
+      emailRequired: 'البريد الإلكتروني مطلوب',
+      password: 'كلمة المرور',
+      passwordRequired: 'كلمة المرور مطلوبة',
+      submit: 'تسجيل الدخول',
+      success: 'تم تسجيل الدخول بنجاح',
+    },
+    admin: {
+      managementPanel: 'لوحة الإدارة',
+      operationsPanel: 'لوحة العمليات',
+      pending: 'قيد الانتظار',
+      activeOrder: 'الطلبات النشطة',
+      liveOperation: 'العمليات المباشرة',
+      adminSubtitle: 'إدارة المطبخ والطلبات والطاولات وQR والقائمة والفريق',
+      staffSubtitle: 'المطبخ والطلبات وطلبات العملاء',
+      realtimeOn: 'الاتصال المباشر مفعل',
+      realtimeOff: 'الاتصال المباشر مغلق',
+      soundTest: 'اختبار الصوت',
+      enableSound: 'تفعيل الصوت',
+      tables: 'طاولة',
+      activeOrders: 'طلبات نشطة',
+      served: 'تم تقديمها',
+      ratings: 'تقييم',
+      tableMetric: 'الطاولات',
+      productMetric: 'المنتجات',
+      orderMetric: 'الطلبات',
+      servedMetric: 'تم التقديم',
+      pendingRequestMetric: 'طلبات معلقة',
+      overallRating: 'التقييم العام',
+      tabs: {
+        overview: 'نظرة عامة',
+        orders: 'سجل الطلبات',
+        requests: 'سجل الطلبات الخدمية',
+        feedbacks: 'التقييمات',
+        tables: 'الطاولات وQR',
+        categories: 'الفئات',
+        products: 'المنتجات',
+        users: 'الفريق',
+        restaurant: 'المطعم',
+      },
+    },
+    menu: {
+      table: 'طاولة',
+      hero: 'اطلب من قائمة QR، واستدع النادل، وتابع حالة طلبك مباشرة.',
+      callWaiter: 'استدعاء النادل',
+      requestBill: 'طلب الحساب',
+      cart: 'السلة',
+      menu: 'القائمة',
+      myOrders: 'طلباتي',
+      search: 'ابحث عن المنتجات',
+      add: 'إضافة',
+      emptyCategory: 'لا توجد منتجات في هذه الفئة',
+      noOrders: 'لا توجد طلبات بعد',
+      unavailableTitle: 'القائمة غير متاحة',
+      unavailableSubtitle: 'لم يتم العثور على قائمة طاولة نشطة لهذا رمز QR.',
+      order: 'طلب',
+      total: 'الإجمالي',
+      cancelled: 'تم إلغاء الطلب',
+      cancelledDescription: 'قام المطعم بإلغاء طلبك.',
+      feedbackReceived: 'تم استلام تقييمك',
+      feedbackDescription: 'تم إرسال ملاحظاتك إلى إدارة المطعم.',
+      cartSelected: 'منتجات محددة',
+      cartDraft: 'سيتم تجهيز طلبك هنا',
+      payableTotal: 'المبلغ المستحق',
+      placeOrder: 'إرسال الطلب',
+      cartEmpty: 'السلة فارغة',
+      productNote: 'ملاحظة المنتج',
+      orderNote: 'ملاحظة الطلب',
+      addedToCart: 'أضيف إلى السلة',
+      orderReceived: 'تم استلام الطلب',
+      orderSent: 'تم إرسال طلبك إلى المطبخ. يمكنك متابعة حالته من هذه الشاشة.',
+      waiterCalled: 'تم استدعاء النادل',
+      billSent: 'تم إرسال طلب الحساب',
+      billNote: 'أضف ملاحظة لطلب الحساب',
+      waiterNote: 'أضف رسالة للنادل',
+      send: 'إرسال',
+      unitPrice: 'سعر الوحدة',
+      orderNotePlaceholder: 'مثال: أحضر كل شيء معا',
+      feedbackThanks: 'شكرا على تقييمك',
+    },
+    status: {
+      PENDING: 'تم الاستلام',
+      PREPARING: 'قيد التحضير',
+      READY: 'جاهز',
+      SERVED: 'تم التقديم',
+      CANCELLED: 'ملغي',
+    },
+  },
 };
 
 const PreferencesContext = createContext(null);
@@ -342,6 +454,7 @@ export function PreferencesProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
     document.documentElement.lang = language;
+    document.documentElement.dir = languageDirections[language] || 'ltr';
   }, [language]);
 
   useEffect(() => {
