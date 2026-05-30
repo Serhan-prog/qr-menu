@@ -144,6 +144,20 @@ class SecurityAndOrderFlowTests {
     }
 
     @Test
+    void inactiveTableQrDoesNotExposeMenu() throws Exception {
+        mockMvc.perform(get("/api/menu/table/" + table.getTableCode()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tableCode").value(table.getTableCode()));
+
+        table.setActive(false);
+        tableRepository.save(table);
+
+        mockMvc.perform(get("/api/menu/table/" + table.getTableCode()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Menu is not available for this table"));
+    }
+
+    @Test
     void orderTrackingUsesPublicTrackingCodeInsteadOfPublicId() throws Exception {
         Cookie authCookie = loginCookie();
 

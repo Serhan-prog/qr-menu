@@ -6,6 +6,7 @@ import com.qrmenu.dto.ProductResponse;
 import com.qrmenu.entity.Category;
 import com.qrmenu.entity.Product;
 import com.qrmenu.entity.RestaurantTable;
+import com.qrmenu.exception.ResourceNotFoundException;
 import com.qrmenu.repository.CategoryRepository;
 import com.qrmenu.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,10 @@ public class MenuService {
     @Transactional(readOnly = true)
     public MenuResponse getMenuByTableCode(String tableCode) {
         RestaurantTable table = tableService.getByCode(tableCode);
+        if (!table.isActive()) {
+            throw new ResourceNotFoundException("Menu is not available for this table");
+        }
+
         List<Product> products = productRepository.findByRestaurantIdAndAvailableTrueOrderBySortOrderAscNameAsc(table.getRestaurant().getId());
         List<Category> categories = categoryRepository.findByRestaurantIdAndActiveTrueOrderBySortOrderAscNameAsc(table.getRestaurant().getId());
 

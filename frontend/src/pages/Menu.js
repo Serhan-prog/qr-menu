@@ -57,6 +57,7 @@ const FINAL_ORDER_STATUSES = ['CANCELLED'];
 function Menu() {
   const { tableCode } = useParams();
   const [menu, setMenu] = useState(null);
+  const [menuError, setMenuError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -116,10 +117,12 @@ function Menu() {
 
   const loadMenu = async () => {
     setLoading(true);
+    setMenuError(null);
     try {
       setMenu(await qrMenuApi.getMenu(tableCode));
     } catch (error) {
-      message.error(apiError(error));
+      setMenu(null);
+      setMenuError(apiError(error));
     } finally {
       setLoading(false);
     }
@@ -304,7 +307,13 @@ function Menu() {
   }
 
   if (!menu) {
-    return <Result status="404" title="Menü bulunamadı" />;
+    return (
+      <Result
+        status="404"
+        title="Menü erişime kapalı"
+        subTitle={menuError || 'Bu QR kod için aktif bir masa menüsü bulunamadı.'}
+      />
+    );
   }
 
   return (
