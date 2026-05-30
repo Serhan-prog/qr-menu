@@ -355,8 +355,6 @@ function AdminDashboard() {
           <OrdersTable
             loading={loading}
             orders={orders}
-            onStatusChange={updateOrderStatus}
-            onCancel={requestOrderCancellation}
           />
         </DataSection>
       ),
@@ -370,8 +368,6 @@ function AdminDashboard() {
           loading={loading}
           waiterCalls={waiterCalls}
           billRequests={billRequests}
-          onWaiterStatusChange={updateWaiterStatus}
-          onBillStatusChange={updateBillStatus}
         />
       ),
     },
@@ -661,11 +657,12 @@ function AdminDashboard() {
   );
 }
 
-function OrdersTable({ loading, orders, onStatusChange, onCancel }) {
+function OrdersTable({ loading, orders }) {
   return (
     <Table
+      className="history-table orders-history-table"
       size="middle"
-      scroll={{ x: 760 }}
+      tableLayout="fixed"
       rowKey="id"
       loading={loading}
       dataSource={orders}
@@ -675,92 +672,65 @@ function OrdersTable({ loading, orders, onStatusChange, onCancel }) {
             {order.note && <Text className="order-note"><strong>Sipariş notu:</strong> {order.note}</Text>}
             {order.cancellationReason && <Text className="cancelled-order-note"><strong>İptal nedeni:</strong> {order.cancellationReason}</Text>}
             <Table
+              className="order-items-table"
               size="small"
-              scroll={{ x: 640 }}
+              tableLayout="fixed"
               rowKey="id"
               pagination={false}
               dataSource={order.items}
               columns={[
-                { title: 'Ürün', dataIndex: 'productName' },
-                { title: 'Adet', dataIndex: 'quantity' },
-                { title: 'Ürün Notu', dataIndex: 'note', render: (value) => value || '-' },
-                { title: 'Birim', dataIndex: 'unitPrice', render: currency },
-                { title: 'Toplam', dataIndex: 'lineTotal', render: currency },
+                { title: 'Ürün', dataIndex: 'productName', width: '30%', onCell: mobileCellLabel('Ürün') },
+                { title: 'Adet', dataIndex: 'quantity', width: '12%', onCell: mobileCellLabel('Adet') },
+                { title: 'Ürün Notu', dataIndex: 'note', width: '30%', render: (value) => value || '-', onCell: mobileCellLabel('Ürün Notu') },
+                { title: 'Birim', dataIndex: 'unitPrice', width: '14%', render: currency, onCell: mobileCellLabel('Birim') },
+                { title: 'Toplam', dataIndex: 'lineTotal', width: '14%', render: currency, onCell: mobileCellLabel('Toplam') },
               ]}
             />
           </div>
         ),
       }}
       columns={[
-        { title: 'Masa', dataIndex: 'tableNumber' },
-        { title: 'Durum', dataIndex: 'status', render: statusTag },
-        { title: 'Toplam', dataIndex: 'totalAmount', render: currency },
-        { title: 'Tarih', dataIndex: 'createdAt', render: dateTime },
-        {
-          title: 'Güncelle',
-          render: (_, record) => (
-            <Select
-              value={record.status}
-              onChange={(status) => status === 'CANCELLED' ? onCancel(record) : onStatusChange(record.id, status)}
-              options={orderStatuses.map(option)}
-            />
-          ),
-        },
+        { title: 'Masa', dataIndex: 'tableNumber', width: '18%', onCell: mobileCellLabel('Masa') },
+        { title: 'Durum', dataIndex: 'status', width: '24%', render: statusTag, onCell: mobileCellLabel('Durum') },
+        { title: 'Toplam', dataIndex: 'totalAmount', width: '22%', render: currency, onCell: mobileCellLabel('Toplam') },
+        { title: 'Tarih', dataIndex: 'createdAt', width: '36%', render: dateTime, onCell: mobileCellLabel('Tarih') },
       ]}
     />
   );
 }
 
-function RequestsHistory({ loading, waiterCalls, billRequests, onWaiterStatusChange, onBillStatusChange }) {
+function RequestsHistory({ loading, waiterCalls, billRequests }) {
   return (
     <div className="request-history-grid">
       <DataSection title="Garson Çağrıları">
         <Table
+          className="history-table requests-history-table"
           size="middle"
-          scroll={{ x: 720 }}
+          tableLayout="fixed"
           rowKey="id"
           loading={loading}
           dataSource={waiterCalls}
           columns={[
-            { title: 'Masa', dataIndex: 'tableNumber' },
-            { title: 'Mesaj', dataIndex: 'message', render: (value) => value || '-' },
-            { title: 'Durum', dataIndex: 'status', render: statusTag },
-            { title: 'Oluşturuldu', dataIndex: 'createdAt', render: dateTime },
-            {
-              title: 'Güncelle',
-              render: (_, record) => (
-                <Select
-                  value={record.status}
-                  onChange={(status) => onWaiterStatusChange(record.id, status)}
-                  options={['OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].map(option)}
-                />
-              ),
-            },
+            { title: 'Masa', dataIndex: 'tableNumber', width: '16%', onCell: mobileCellLabel('Masa') },
+            { title: 'Mesaj', dataIndex: 'message', width: '34%', render: (value) => value || '-', onCell: mobileCellLabel('Mesaj') },
+            { title: 'Durum', dataIndex: 'status', width: '22%', render: statusTag, onCell: mobileCellLabel('Durum') },
+            { title: 'Oluşturuldu', dataIndex: 'createdAt', width: '28%', render: dateTime, onCell: mobileCellLabel('Oluşturuldu') },
           ]}
         />
       </DataSection>
       <DataSection title="Hesap İstekleri">
         <Table
+          className="history-table requests-history-table"
           size="middle"
-          scroll={{ x: 720 }}
+          tableLayout="fixed"
           rowKey="id"
           loading={loading}
           dataSource={billRequests}
           columns={[
-            { title: 'Masa', dataIndex: 'tableNumber' },
-            { title: 'Not', dataIndex: 'note', render: (value) => value || '-' },
-            { title: 'Durum', dataIndex: 'status', render: statusTag },
-            { title: 'Oluşturuldu', dataIndex: 'createdAt', render: dateTime },
-            {
-              title: 'Güncelle',
-              render: (_, record) => (
-                <Select
-                  value={record.status}
-                  onChange={(status) => onBillStatusChange(record.id, status)}
-                  options={['OPEN', 'PAID', 'CANCELLED'].map(option)}
-                />
-              ),
-            },
+            { title: 'Masa', dataIndex: 'tableNumber', width: '16%', onCell: mobileCellLabel('Masa') },
+            { title: 'Not', dataIndex: 'note', width: '34%', render: (value) => value || '-', onCell: mobileCellLabel('Not') },
+            { title: 'Durum', dataIndex: 'status', width: '22%', render: statusTag, onCell: mobileCellLabel('Durum') },
+            { title: 'Oluşturuldu', dataIndex: 'createdAt', width: '28%', render: dateTime, onCell: mobileCellLabel('Oluşturuldu') },
           ]}
         />
       </DataSection>
@@ -812,6 +782,10 @@ function DataSection({ title, onAdd, children }) {
       {children}
     </Card>
   );
+}
+
+function mobileCellLabel(label) {
+  return () => ({ 'data-label': label });
 }
 
 function RestaurantFields() {
