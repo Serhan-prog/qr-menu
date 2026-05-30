@@ -52,7 +52,7 @@ const statusSteps = [
 ];
 
 const ORDER_STORAGE_PREFIX = 'qr_menu_table_orders:';
-const FINAL_ORDER_STATUSES = ['SERVED', 'CANCELLED'];
+const FINAL_ORDER_STATUSES = ['CANCELLED'];
 
 function Menu() {
   const { tableCode } = useParams();
@@ -650,7 +650,7 @@ function rememberTrackingCode(tableCode, trackingCode) {
 
 function syncStoredTrackingCodes(tableCode, orders) {
   const activeTrackingCodes = orders
-    .filter((order) => !FINAL_ORDER_STATUSES.includes(order.status))
+    .filter((order) => !FINAL_ORDER_STATUSES.includes(order.status) && !(order.status === 'SERVED' && order.feedbackSubmitted))
     .map((order) => order.trackingCode);
   writeStoredTrackingCodes(tableCode, activeTrackingCodes);
 }

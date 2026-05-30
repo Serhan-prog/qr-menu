@@ -16,5 +16,9 @@ export function dateTime(value) {
 }
 
 export function apiError(error) {
-  return error?.response?.data?.message || 'Islem tamamlanamadi';
+  const data = error?.response?.data;
+  if (data?.validationErrors) {
+    return Object.values(data.validationErrors).join(', ');
+  }
+  return data?.message || 'İşlem tamamlanamadı';
 }

@@ -26,6 +26,7 @@ function csrfIgnoredPath(url = '') {
   return path === '/api/auth/login'
     || path === '/api/auth/logout'
     || path === '/api/orders'
+    || path.startsWith('/api/feedback/order/')
     || path === '/api/waiter-calls'
     || path === '/api/bill-requests';
 }
