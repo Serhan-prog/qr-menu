@@ -36,6 +36,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -155,6 +157,72 @@ class SecurityAndOrderFlowTests {
         mockMvc.perform(get("/api/menu/table/" + table.getTableCode()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Menu is not available for this table"));
+    }
+
+    @Test
+    void adminCanDeactivateTableBySavingAndDeleteTableByDeleting() throws Exception {
+        Cookie authCookie = loginCookie();
+
+        mockMvc.perform(put("/api/tables/" + table.getId())
+                        .with(csrf())
+                        .cookie(authCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"restaurantId":%d,"tableNumber":1,"active":false}
+                                """.formatted(restaurant.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+
+        table = tableRepository.findById(table.getId()).orElseThrow();
+        table.setActive(true);
+        tableRepository.save(table);
+
+        RestaurantTable disposableTable = new RestaurantTable();
+        disposableTable.setRestaurant(restaurant);
+        disposableTable.setTableNumber(99);
+        disposableTable.setTableCode("disposable-table-code");
+        disposableTable = tableRepository.save(disposableTable);
+
+        mockMvc.perform(delete("/api/tables/" + disposableTable.getId())
+                        .with(csrf())
+                        .cookie(authCookie))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/tables/" + disposableTable.getId()).cookie(authCookie))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void adminDeletesProductsAndCategoriesInsteadOfOnlyMarkingInactive() throws Exception {
+        Cookie authCookie = loginCookie();
+
+        Product disposableProduct = new Product();
+        disposableProduct.setRestaurant(restaurant);
+        disposableProduct.setCategory(category);
+        disposableProduct.setName("Silinecek Urun");
+        disposableProduct.setPrice(new BigDecimal("10.00"));
+        disposableProduct = productRepository.save(disposableProduct);
+
+        mockMvc.perform(delete("/api/products/" + disposableProduct.getId())
+                        .with(csrf())
+                        .cookie(authCookie))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/products/" + disposableProduct.getId()).cookie(authCookie))
+                .andExpect(status().isNotFound());
+
+        Category disposableCategory = new Category();
+        disposableCategory.setRestaurant(restaurant);
+        disposableCategory.setName("Silinecek Kategori");
+        disposableCategory = categoryRepository.save(disposableCategory);
+
+        mockMvc.perform(delete("/api/categories/" + disposableCategory.getId())
+                        .with(csrf())
+                        .cookie(authCookie))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/categories/" + disposableCategory.getId()).cookie(authCookie))
+                .andExpect(status().isNotFound());
     }
 
     @Test

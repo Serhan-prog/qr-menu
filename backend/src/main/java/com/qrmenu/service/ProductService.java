@@ -72,7 +72,7 @@ public class ProductService {
     public void delete(Long id) {
         Product product = getEntity(id);
         authContextService.assertRestaurantAccess(product.getRestaurant().getId());
-        product.setAvailable(false);
+        productRepository.delete(product);
     }
 
     private void apply(Product product, ProductRequest request) {

@@ -24,6 +24,7 @@ import {
   BarsOutlined,
   BellOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   FireOutlined,
   HomeOutlined,
@@ -42,7 +43,7 @@ import {
 } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import AdminKitchenPanel from '../components/admin/AdminKitchenPanel.js';
 import AdminRequestsPanel from '../components/admin/AdminRequestsPanel.js';
 import { connectAdminNotifications } from '../api/adminRealtime.js';
@@ -247,6 +248,26 @@ function AdminDashboard() {
     } catch (error) {
       message.error(apiError(error));
     }
+  };
+
+  const downloadQrPdf = () => {
+    if (!qrRecord) {
+      return;
+    }
+
+    const canvas = document.getElementById('qr-pdf-canvas');
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      message.error('QR kod hazirlanamadi');
+      return;
+    }
+
+    const pdf = createQrPdf({
+      imageDataUrl: canvas.toDataURL('image/jpeg', 0.96),
+      title: `Masa ${qrRecord.tableNumber} QR Kodu`,
+      subtitle: restaurantName,
+      url: qrRecord.qrUrl,
+    });
+    downloadBlob(pdf, `masa-${qrRecord.tableNumber}-qr.pdf`);
   };
 
   const updateOrderStatus = async (id, status, cancellationReason) => {
@@ -629,12 +650,21 @@ function AdminDashboard() {
         onCancel={() => setQrRecord(null)}
         footer={[
           <Button key="close" onClick={() => setQrRecord(null)}>Kapat</Button>,
+          <Button key="pdf" icon={<DownloadOutlined />} onClick={downloadQrPdf}>PDF Indir</Button>,
           <Button key="open" type="primary" onClick={() => qrRecord && window.open(qrRecord.qrUrl, '_blank')}>Menüyü Aç</Button>,
         ]}
       >
         {qrRecord && (
           <div className="qr-modal-content">
             <QRCodeSVG value={qrRecord.qrUrl} size={240} level="H" includeMargin />
+            <QRCodeCanvas
+              id="qr-pdf-canvas"
+              value={qrRecord.qrUrl}
+              size={720}
+              level="H"
+              includeMargin
+              style={{ display: 'none' }}
+            />
             <Title level={4}>Masa {qrRecord.tableNumber}</Title>
             <Text copyable>{qrRecord.qrUrl}</Text>
           </div>
@@ -935,6 +965,94 @@ function modalTitle(type, record) {
 
 function option(value) {
   return { label: statusLabel(value), value };
+}
+
+function createQrPdf({ imageDataUrl, title, subtitle, url }) {
+  const imageBytes = dataUrlToBytes(imageDataUrl);
+  const encoder = new TextEncoder();
+  const pageWidth = 595;
+  const imageSize = 240;
+  const imageX = (pageWidth - imageSize) / 2;
+  const content = [
+    `BT /F1 24 Tf 72 780 Td (${pdfText(title)}) Tj ET`,
+    `BT /F1 13 Tf 72 752 Td (${pdfText(subtitle)}) Tj ET`,
+    `q ${imageSize} 0 0 ${imageSize} ${imageX} 430 cm /Im1 Do Q`,
+    `BT /F1 10 Tf 72 120 Td (${pdfText(url)}) Tj ET`,
+  ].join('\n');
+  const contentLength = encoder.encode(content).length;
+  const parts = [];
+  const offsets = [];
+  let offset = 0;
+
+  const addText = (value) => {
+    const bytes = encoder.encode(value);
+    parts.push(bytes);
+    offset += bytes.length;
+  };
+  const addBytes = (bytes) => {
+    parts.push(bytes);
+    offset += bytes.length;
+  };
+  const startObject = (id) => {
+    offsets.push(offset);
+    addText(`${id} 0 obj\n`);
+  };
+
+  addText('%PDF-1.4\n');
+  startObject(1);
+  addText('<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  startObject(2);
+  addText('<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+  startObject(3);
+  addText('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 6 0 R >> /XObject << /Im1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n');
+  startObject(4);
+  addText(`<< /Length ${contentLength} >>\nstream\n${content}\nendstream\nendobj\n`);
+  startObject(5);
+  addText(`<< /Type /XObject /Subtype /Image /Width 720 /Height 720 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`);
+  addBytes(imageBytes);
+  addText('\nendstream\nendobj\n');
+  startObject(6);
+  addText('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n');
+
+  const xrefStart = offset;
+  addText(`xref\n0 ${offsets.length + 1}\n0000000000 65535 f \n`);
+  offsets.forEach((objectOffset) => {
+    addText(`${String(objectOffset).padStart(10, '0')} 00000 n \n`);
+  });
+  addText(`trailer\n<< /Size ${offsets.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+
+  return new Blob(parts, { type: 'application/pdf' });
+}
+
+function dataUrlToBytes(dataUrl) {
+  const base64 = dataUrl.split(',')[1] || '';
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function pdfText(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)');
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function activeTag(value) {

@@ -65,7 +65,7 @@ public class CategoryService {
     public void delete(Long id) {
         Category category = getEntity(id);
         authContextService.assertRestaurantAccess(category.getRestaurant().getId());
-        category.setActive(false);
+        categoryRepository.delete(category);
     }
 
     private void apply(Category category, CategoryRequest request) {

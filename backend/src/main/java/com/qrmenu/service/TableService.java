@@ -99,7 +99,7 @@ public class TableService {
     public void delete(Long id) {
         RestaurantTable table = getEntity(id);
         authContextService.assertRestaurantAccess(table.getRestaurant().getId());
-        table.setActive(false);
+        tableRepository.delete(table);
     }
 
     public TableResponse toResponse(RestaurantTable table) {

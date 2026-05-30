@@ -3,6 +3,7 @@ package com.qrmenu.exception;
 import com.qrmenu.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -35,6 +36,11 @@ public class GlobalExceptionHandler {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
         return build(HttpStatus.BAD_REQUEST, "Validation failed", request, errors);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException exception, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "This record is used by another record and cannot be deleted", request, null);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
