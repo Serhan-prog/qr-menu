@@ -44,6 +44,11 @@ export const qrMenuApi = {
   updateOrderStatus: (id, status, cancellationReason) =>
     api.patch(`/api/orders/${id}/status`, { status, cancellationReason }).then((res) => res.data),
 
+  createFeedback: (trackingCode, payload) =>
+    api.post(`/api/feedback/order/${trackingCode}`, payload).then((res) => res.data),
+  getFeedbacks: (restaurantId) =>
+    api.get('/api/feedback', { params: restaurantId ? { restaurantId } : {} }).then((res) => res.data),
+
   createWaiterCall: (payload) => api.post('/api/waiter-calls', payload).then((res) => res.data),
   getWaiterCalls: (restaurantId) =>
     api.get('/api/waiter-calls', { params: restaurantId ? { restaurantId } : {} }).then((res) => res.data),

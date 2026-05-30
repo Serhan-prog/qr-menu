@@ -10,6 +10,7 @@ import com.qrmenu.entity.Product;
 import com.qrmenu.entity.RestaurantTable;
 import com.qrmenu.exception.BadRequestException;
 import com.qrmenu.exception.ResourceNotFoundException;
+import com.qrmenu.repository.FeedbackRepository;
 import com.qrmenu.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class OrderService {
     private final ProductService productService;
     private final AdminNotificationService adminNotificationService;
     private final AuthContextService authContextService;
+    private final FeedbackRepository feedbackRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional(readOnly = true)
@@ -133,6 +135,7 @@ public class OrderService {
                 order.getStatus(),
                 order.getNote(),
                 order.getCancellationReason(),
+                feedbackRepository.existsByOrderId(order.getId()),
                 order.getTotalAmount(),
                 order.getItems().stream().map(this::toItemResponse).toList(),
                 order.getCreatedAt(),

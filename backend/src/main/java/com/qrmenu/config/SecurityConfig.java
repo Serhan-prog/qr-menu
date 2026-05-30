@@ -45,6 +45,7 @@ public class SecurityConfig {
                                 },
                                 new AntPathRequestMatcher("/api/auth/**"),
                                 new AntPathRequestMatcher("/api/orders", "POST"),
+                                new AntPathRequestMatcher("/api/feedback/order/**", "POST"),
                                 new AntPathRequestMatcher("/api/waiter-calls", "POST"),
                                 new AntPathRequestMatcher("/api/bill-requests", "POST")
                         )
@@ -57,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/menu/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/orders/track/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/feedback/order/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/waiter-calls").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/bill-requests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/restaurants/public").permitAll()

@@ -16,6 +16,7 @@ public record OrderResponse(
         OrderStatus status,
         String note,
         String cancellationReason,
+        Boolean feedbackSubmitted,
         BigDecimal totalAmount,
         List<OrderItemResponse> items,
         Instant createdAt,

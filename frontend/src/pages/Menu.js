@@ -10,6 +10,7 @@ import {
   List,
   Modal,
   Progress,
+  Rate,
   Result,
   Segmented,
   Spin,
@@ -66,6 +67,8 @@ function Menu() {
   const [requestNote, setRequestNote] = useState('');
   const [search, setSearch] = useState('');
   const [view, setView] = useState('Menü');
+  const [feedbackDrafts, setFeedbackDrafts] = useState({});
+  const [submittingFeedback, setSubmittingFeedback] = useState(null);
 
   useEffect(() => {
     loadMenu();
@@ -261,6 +264,41 @@ function Menu() {
     }
   };
 
+  const updateFeedbackDraft = (trackingCode, values) => {
+    setFeedbackDrafts((current) => ({
+      ...current,
+      [trackingCode]: {
+        foodRating: 5,
+        serviceRating: 5,
+        speedRating: 5,
+        cleanlinessRating: 5,
+        overallRating: 5,
+        comment: '',
+        ...current[trackingCode],
+        ...values,
+      },
+    }));
+  };
+
+  const submitFeedback = async (order) => {
+    const draft = feedbackDrafts[order.trackingCode] || defaultFeedbackDraft();
+    setSubmittingFeedback(order.trackingCode);
+    try {
+      await qrMenuApi.createFeedback(order.trackingCode, {
+        ...draft,
+        comment: draft.comment.trim() || null,
+      });
+      setOrders((current) =>
+        current.map((item) => item.trackingCode === order.trackingCode ? { ...item, feedbackSubmitted: true } : item)
+      );
+      message.success('Puanınız için teşekkürler');
+    } catch (error) {
+      message.error(apiError(error));
+    } finally {
+      setSubmittingFeedback(null);
+    }
+  };
+
   if (loading) {
     return <Spin fullscreen />;
   }
@@ -385,6 +423,23 @@ function Menu() {
                   <Text>Toplam</Text>
                   <strong>{currency(order.totalAmount)}</strong>
                 </div>
+                {order.status === 'SERVED' && !order.feedbackSubmitted && (
+                  <FeedbackCard
+                    draft={feedbackDrafts[order.trackingCode] || defaultFeedbackDraft()}
+                    loading={submittingFeedback === order.trackingCode}
+                    onChange={(values) => updateFeedbackDraft(order.trackingCode, values)}
+                    onSubmit={() => submitFeedback(order)}
+                  />
+                )}
+                {order.feedbackSubmitted && (
+                  <Alert
+                    className="feedback-thanks-alert"
+                    type="success"
+                    showIcon
+                    message="Değerlendirmeniz alındı"
+                    description="Geri bildiriminiz restoran yönetimine iletildi."
+                  />
+                )}
               </article>
             ))}
           </div>
@@ -512,6 +567,54 @@ function statusLabel(status) {
 function statusColor(status) {
   const colors = { PENDING: 'orange', PREPARING: 'blue', READY: 'cyan', SERVED: 'green', CANCELLED: 'red' };
   return colors[status] || 'default';
+}
+
+function FeedbackCard({ draft, loading, onChange, onSubmit }) {
+  const ratingFields = [
+    ['foodRating', 'Yemek kalitesi'],
+    ['serviceRating', 'Servis'],
+    ['speedRating', 'Hız'],
+    ['cleanlinessRating', 'Temizlik'],
+    ['overallRating', 'Genel memnuniyet'],
+  ];
+
+  return (
+    <div className="feedback-card">
+      <div className="feedback-card-head">
+        <Title level={5}>Deneyiminizi puanlayın</Title>
+        <Text>Yıldızlar ve kısa notunuz hizmet kalitesini iyileştirmek için kullanılır.</Text>
+      </div>
+      <div className="feedback-rating-grid">
+        {ratingFields.map(([key, label]) => (
+          <label className="feedback-rating-row" key={key}>
+            <Text>{label}</Text>
+            <Rate value={draft[key]} onChange={(value) => onChange({ [key]: value || 1 })} />
+          </label>
+        ))}
+      </div>
+      <Input.TextArea
+        maxLength={1000}
+        rows={3}
+        placeholder="İsteğe bağlı yorumunuz"
+        value={draft.comment}
+        onChange={(event) => onChange({ comment: event.target.value })}
+      />
+      <Button type="primary" loading={loading} onClick={onSubmit}>
+        Puanımı Gönder
+      </Button>
+    </div>
+  );
+}
+
+function defaultFeedbackDraft() {
+  return {
+    foodRating: 5,
+    serviceRating: 5,
+    speedRating: 5,
+    cleanlinessRating: 5,
+    overallRating: 5,
+    comment: '',
+  };
 }
 
 function storageKey(tableCode) {

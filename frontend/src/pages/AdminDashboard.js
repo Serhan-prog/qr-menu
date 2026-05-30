@@ -8,6 +8,7 @@ import {
   Menu,
   Modal,
   Popconfirm,
+  Rate,
   Select,
   Space,
   Statistic,
@@ -35,6 +36,7 @@ import {
   ShopOutlined,
   ShoppingOutlined,
   SoundOutlined,
+  StarOutlined,
   TableOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
@@ -70,6 +72,7 @@ function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [waiterCalls, setWaiterCalls] = useState([]);
   const [billRequests, setBillRequests] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
   const [modal, setModal] = useState({ type: null, record: null });
   const [cancellationModal, setCancellationModal] = useState({ order: null, reason: '' });
   const [qrRecord, setQrRecord] = useState(null);
@@ -154,7 +157,7 @@ function AdminDashboard() {
     }
     setLoading(true);
     try {
-      const [tableList, categoryList, productList, userList, orderList, waiterList, billList] = await Promise.all([
+      const [tableList, categoryList, productList, userList, orderList, waiterList, billList, feedbackList] = await Promise.all([
         isAdmin ? qrMenuApi.getTables(id) : Promise.resolve([]),
         isAdmin ? qrMenuApi.getCategories(id) : Promise.resolve([]),
         isAdmin ? qrMenuApi.getProducts({ restaurantId: id }) : Promise.resolve([]),
@@ -162,6 +165,7 @@ function AdminDashboard() {
         qrMenuApi.getOrders(id),
         qrMenuApi.getWaiterCalls(id),
         qrMenuApi.getBillRequests(id),
+        qrMenuApi.getFeedbacks(id),
       ]);
       setTables(tableList);
       setCategories(categoryList);
@@ -170,6 +174,7 @@ function AdminDashboard() {
       setOrders(orderList);
       setWaiterCalls(waiterList);
       setBillRequests(billList);
+      setFeedbacks(feedbackList);
     } catch (error) {
       message.error(apiError(error));
     } finally {
@@ -369,6 +374,12 @@ function AdminDashboard() {
           onBillStatusChange={updateBillStatus}
         />
       ),
+    },
+    {
+      key: 'feedbacks',
+      label: 'Puanlar',
+      icon: <StarOutlined />,
+      children: <FeedbackSection loading={loading} feedbacks={feedbacks} />,
     },
     {
       key: 'tables',
@@ -575,6 +586,7 @@ function AdminDashboard() {
               {isAdmin && <Tag icon={<HomeOutlined />} color="green">{tables.length} masa</Tag>}
               {!isAdmin && <Tag icon={<ShoppingOutlined />} color="gold">{activeOrders.length} aktif sipariş</Tag>}
               <Tag icon={<ProfileOutlined />} color="blue">{servedOrders} servis edildi</Tag>
+              <Tag icon={<StarOutlined />} color="gold">{feedbacks.length} puan</Tag>
             </Space>
           </div>
           <div className="stats-grid">
@@ -584,6 +596,7 @@ function AdminDashboard() {
             {!isAdmin && <Card className="metric-card"><Statistic title="Servis Edildi" value={servedOrders} prefix={<TableOutlined />} /></Card>}
             <Card className="metric-card"><Statistic title="Aktif Sipariş" value={activeOrders.length} prefix={<ShoppingOutlined />} /></Card>
             <Card className="metric-card alert-metric"><Statistic title="Bekleyen İstek" value={waitingRequests} prefix={<BellOutlined />} /></Card>
+            <Card className="metric-card"><Statistic title="Genel Puan" value={average(feedbacks, 'overallRating')} precision={1} prefix={<StarOutlined />} /></Card>
           </div>
           <Tabs className="admin-tabs" activeKey={activeTab} items={tabs} renderTabBar={() => null} />
         </Content>
@@ -755,6 +768,40 @@ function RequestsHistory({ loading, waiterCalls, billRequests, onWaiterStatusCha
   );
 }
 
+function FeedbackSection({ loading, feedbacks }) {
+  return (
+    <div className="feedback-admin-grid">
+      <div className="feedback-summary-grid">
+        <Card className="metric-card"><Statistic title="Genel" value={average(feedbacks, 'overallRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title="Yemek" value={average(feedbacks, 'foodRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title="Servis" value={average(feedbacks, 'serviceRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title="Hız" value={average(feedbacks, 'speedRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title="Temizlik" value={average(feedbacks, 'cleanlinessRating')} precision={1} prefix={<StarOutlined />} /></Card>
+      </div>
+      <DataSection title="Müşteri Puanları">
+        <Table
+          size="middle"
+          scroll={{ x: 900 }}
+          rowKey="id"
+          loading={loading}
+          dataSource={feedbacks}
+          columns={[
+            { title: 'Masa', dataIndex: 'tableNumber' },
+            { title: 'Sipariş', dataIndex: 'orderId', render: (value) => `#${value}` },
+            { title: 'Genel', dataIndex: 'overallRating', render: ratingStars },
+            { title: 'Yemek', dataIndex: 'foodRating', render: ratingStars },
+            { title: 'Servis', dataIndex: 'serviceRating', render: ratingStars },
+            { title: 'Hız', dataIndex: 'speedRating', render: ratingStars },
+            { title: 'Temizlik', dataIndex: 'cleanlinessRating', render: ratingStars },
+            { title: 'Yorum', dataIndex: 'comment', render: (value) => value || '-' },
+            { title: 'Tarih', dataIndex: 'createdAt', render: dateTime },
+          ]}
+        />
+      </DataSection>
+    </div>
+  );
+}
+
 function DataSection({ title, onAdd, children }) {
   return (
     <Card
@@ -866,6 +913,17 @@ function UserFields() {
       </Form.Item>
     </>
   );
+}
+
+function average(items, key) {
+  if (!items.length) {
+    return 0;
+  }
+  return items.reduce((sum, item) => sum + Number(item[key] || 0), 0) / items.length;
+}
+
+function ratingStars(value) {
+  return <Rate disabled value={value} />;
 }
 
 function defaultsFor(type) {

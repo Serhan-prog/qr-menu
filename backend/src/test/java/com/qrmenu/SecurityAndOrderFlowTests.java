@@ -10,6 +10,7 @@ import com.qrmenu.entity.User;
 import com.qrmenu.entity.UserRole;
 import com.qrmenu.repository.CategoryRepository;
 import com.qrmenu.repository.BillRequestRepository;
+import com.qrmenu.repository.FeedbackRepository;
 import com.qrmenu.repository.OrderRepository;
 import com.qrmenu.repository.ProductRepository;
 import com.qrmenu.repository.RestaurantRepository;
@@ -31,7 +32,6 @@ import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -71,6 +71,9 @@ class SecurityAndOrderFlowTests {
     private BillRequestRepository billRequestRepository;
 
     @Autowired
+    private FeedbackRepository feedbackRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -85,6 +88,7 @@ class SecurityAndOrderFlowTests {
     void setUp() {
         billRequestRepository.deleteAll();
         waiterCallRepository.deleteAll();
+        feedbackRepository.deleteAll();
         orderRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
@@ -253,6 +257,74 @@ class SecurityAndOrderFlowTests {
     }
 
     @Test
+    void customerCanSubmitFeedbackOnlyAfterOrderIsServed() throws Exception {
+        Cookie authCookie = loginCookie();
+
+        String orderBody = mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tableCode":"test-table-code","items":[{"productId":%d,"quantity":1}]}
+                                """.formatted(product.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.feedbackSubmitted").value(false))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode order = objectMapper.readTree(orderBody);
+        long orderId = order.get("id").asLong();
+        String trackingCode = order.get("trackingCode").asText();
+
+        String feedbackPayload = """
+                {
+                  "foodRating": 5,
+                  "serviceRating": 4,
+                  "speedRating": 5,
+                  "cleanlinessRating": 5,
+                  "overallRating": 5,
+                  "comment": "Cok memnun kaldik"
+                }
+                """;
+
+        mockMvc.perform(post("/api/feedback/order/" + trackingCode)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(feedbackPayload))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(patch("/api/orders/" + orderId + "/status")
+                        .with(csrf())
+                        .cookie(authCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"SERVED"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/feedback/order/" + trackingCode)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(feedbackPayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderId").value(orderId))
+                .andExpect(jsonPath("$.overallRating").value(5));
+
+        mockMvc.perform(get("/api/orders/track/" + trackingCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.feedbackSubmitted").value(true));
+
+        mockMvc.perform(post("/api/feedback/order/" + trackingCode)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(feedbackPayload))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/feedback"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/feedback").cookie(authCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].orderId").value(orderId));
+    }
+
+    @Test
     void staffCanRunOperationsButCannotChangeMenuModel() throws Exception {
         Cookie staffCookie = loginCookie("staff@test.local", "staff-pass");
 
@@ -285,18 +357,13 @@ class SecurityAndOrderFlowTests {
 
         long orderId = objectMapper.readTree(orderBody).get("id").asLong();
 
-        Cookie csrfCookie = mockMvc.perform(get("/api/csrf").cookie(staffCookie))
+        mockMvc.perform(get("/api/csrf").cookie(staffCookie))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").isString())
-                .andReturn()
-                .getResponse()
-                .getCookie("XSRF-TOKEN");
-
-        assertNotNull(csrfCookie);
+                .andExpect(jsonPath("$.token").isString());
 
         mockMvc.perform(patch("/api/orders/" + orderId + "/status")
-                        .cookie(staffCookie, csrfCookie)
-                        .header("X-XSRF-TOKEN", csrfCookie.getValue())
+                        .with(csrf())
+                        .cookie(staffCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"status":"PREPARING"}
