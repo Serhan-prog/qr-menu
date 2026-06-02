@@ -1,27 +1,30 @@
 # QR Menü
 
-Spring Boot ve React tabanlı tek restoran QR menü, sipariş ve operasyon yönetimi uygulaması.
+Spring Boot ve React ile geliştirilmiş tek restoran odaklı QR menü, sipariş, mutfak, servis isteği ve operasyon yönetimi uygulaması.
 
-Bu proje bir restoranda masaya özel QR kod ile menü açılması, müşterinin sipariş vermesi, garson çağırması, hesap istemesi ve sipariş durumunu takip etmesi için tasarlanmıştır. Yönetim paneli ise restoran operasyonunu, mutfak sürecini, masa QR kodlarını, menü içeriğini, ekip kullanıcılarını, servis isteklerini ve müşteri puanlarını tek ekrandan yönetir.
+Bu sistem müşterilerin masaya özel QR kod ile menüyü açmasını, ürünleri incelemesini, sipariş vermesini, garson çağırmasını, hesap istemesini, sipariş durumunu takip etmesini ve servis sonrası puanlama yapmasını sağlar. Admin paneli ise restoran operasyonlarını, mutfak akışını, masa QR kodlarını, kategorileri, ürünleri, ekip kullanıcılarını, servis isteklerini, siparişleri ve müşteri geri bildirimlerini tek arayüzden yönetir.
 
-## Mevcut Özellikler
+## Öne Çıkanlar
 
-- Tek restoran odaklı backend modeli.
-- Masa bazlı benzersiz `tableCode` ve QR menü linki.
-- Public müşteri menüsü: kategori, ürün arama, ürün görselleri ve sepet.
-- Sipariş oluşturma, ürün notu ve sipariş notu.
-- Güvenli `trackingCode` ile müşteri sipariş takibi.
+- Tek restoran odaklı production modeli.
+- Masa bazlı benzersiz `tableCode` değerleri ve QR menü linkleri.
+- Kategori, ürün arama, ürün görselleri, sepet, ürün notu ve sipariş notu destekli public müşteri menüsü.
+- Masa bazlı `localStorage` içinde saklanan güvenli `trackingCode` ile sipariş takibi.
 - Sipariş durumları: `PENDING`, `PREPARING`, `READY`, `SERVED`, `CANCELLED`.
 - Admin tarafından sipariş iptali ve müşteriye gösterilen iptal nedeni.
-- Servis edilen sipariş için müşteri geri bildirimi: yemek, servis, hız, temizlik ve genel puan.
-- Garson çağırma ve hesap isteme.
-- Admin operasyon paneli: bekleyen istekler, mutfak, sipariş geçmişi, istek geçmişi, puanlar.
-- Admin menü yönetimi: masalar, QR linkleri, kategoriler, ürünler, restoran bilgisi ve ekip.
+- Servis edilmiş siparişler için müşteri geri bildirimi: yemek, servis, hız, temizlik, genel puan ve isteğe bağlı yorum.
+- Müşteri menüsünden garson çağırma ve hesap isteme.
+- Bekleyen istekler, mutfak kartları, sipariş geçmişi, istek geçmişi ve puanlar için admin operasyon paneli.
+- Masa, QR linki, kategori, ürün, restoran profili ve ekip kullanıcı yönetimi.
+- Admin ürünler sekmesinde kategoriye göre filtreleme.
+- Responsive admin arayüzü: desktop için tablo, mobil için kart görünümü.
+- Mobil uyumlu admin navigasyonu ve kompakt kartlar.
+- Türkçe, İngilizce, Almanca ve Arapça çoklu dil desteği.
 - `ADMIN` ve `STAFF` rolleri.
-- WebSocket ile admin canlı bildirimleri.
-- Bildirim sesi aktivasyonu ve WebSocket kapalıyken periyodik yedek yenileme.
-- JWT tabanlı auth, HttpOnly cookie, Bearer token desteği ve CSRF koruması.
-- Public endpointler için basit rate limit.
+- WebSocket ile canlı admin bildirimleri ve yedek polling yenilemesi.
+- Admin panelinden etkinleştirilen bildirim sesi.
+- JWT tabanlı auth, HttpOnly cookie desteği, Bearer token desteği ve CSRF koruması.
+- Public müşteri endpointleri için basit rate limit.
 - PostgreSQL, Flyway migration, Docker ve Docker Compose desteği.
 
 ## Proje Yapısı
@@ -50,7 +53,9 @@ Backend:
 
 - Java 17
 - Spring Boot 3.3.5
-- Spring Web, Spring Security, Spring Data JPA
+- Spring Web
+- Spring Security
+- Spring Data JPA
 - Spring WebSocket
 - PostgreSQL 16
 - Flyway
@@ -58,7 +63,7 @@ Backend:
 - Jakarta Validation
 - JJWT
 - Spring Boot Actuator
-- H2 test veritabanı
+- Testler için H2
 
 Frontend:
 
@@ -73,7 +78,7 @@ Frontend:
 
 ## Hızlı Başlangıç
 
-Tüm sistemi PostgreSQL, backend ve frontend olarak kök dizinden çalıştırmak için:
+Tüm sistemi proje kök dizininden çalıştırmak için:
 
 ```powershell
 copy .env.example .env
@@ -81,17 +86,17 @@ copy backend\.env.example backend\.env
 docker compose up -d --build
 ```
 
-Uygulama:
+Uygulama adresi:
 
 ```text
 http://localhost:3000
 ```
 
-Root Docker Compose yapısında frontend Nginx ile yayınlanır. Nginx `/api`, `/actuator` ve `/ws` isteklerini backend servisine proxy eder. Backend host portu root compose dosyasında dışarı açılmaz; uygulama normalde frontend origin üzerinden kullanılır.
+Root Docker Compose yapısında frontend Nginx ile yayınlanır. Nginx `/api`, `/actuator` ve `/ws` isteklerini backend servisine proxy eder. Root compose dosyasında backend host portu dışarı açılmaz; uygulama normalde frontend origin üzerinden kullanılır.
 
 ## Ortam Değişkenleri
 
-Kök `.env` PostgreSQL container için kullanılır:
+Kök `.env` dosyası PostgreSQL container için kullanılır:
 
 ```env
 POSTGRES_DB=qr_menu
@@ -99,7 +104,7 @@ POSTGRES_USER=qr_menu
 POSTGRES_PASSWORD=change-me
 ```
 
-`backend/.env` backend ayarları için kullanılır:
+`backend/.env` backend servisi için kullanılır:
 
 ```env
 POSTGRES_DB=qr_menu
@@ -120,18 +125,18 @@ JWT_SECRET=change-this-to-a-long-random-secret-in-production
 JWT_EXPIRATION_MINUTES=1440
 ```
 
-Frontend `.env` sadece API veya WebSocket farklı origin üzerindeyse doldurulur:
+Frontend `.env` sadece API veya WebSocket origin’i frontend origin’inden farklıysa gerekir:
 
 ```env
 VITE_API_BASE_URL=
 VITE_WS_BASE_URL=
 ```
 
-Local Vite kullanımında `/api` ve `/ws` istekleri `vite.config.js` proxy ayarlarıyla `localhost:8080` backendine gider. Docker production imajında aynı proxy görevini `frontend/nginx.conf` üstlenir.
+Local Vite geliştirmesinde `/api` ve `/ws` istekleri `vite.config.js` ile `localhost:8080` backendine proxy edilir. Docker production imajında aynı proxy görevini `frontend/nginx.conf` üstlenir.
 
 ## Backend Geliştirme
 
-Sadece backend compose yapısını çalıştırmak için:
+Backend compose yapısını çalıştırmak için:
 
 ```powershell
 cd backend
@@ -145,14 +150,14 @@ Backend API:
 http://localhost:8080
 ```
 
-Backend testi:
+Backend testleri:
 
 ```powershell
 cd backend
 .\mvnw.cmd test
 ```
 
-Backend lokal Maven ile çalıştırılacaksa PostgreSQL erişilebilir olmalı ve `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` değerleri buna göre ayarlanmalıdır.
+Backend Maven ile lokal çalıştırılacaksa PostgreSQL erişilebilir olmalı ve `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` değerleri lokal veritabanına göre ayarlanmalıdır.
 
 ## Frontend Geliştirme
 
@@ -182,35 +187,47 @@ cd frontend
 npm run preview
 ```
 
-## Uygulama URL'leri
+## Uygulama Route’ları
 
 ```text
-GET  http://localhost:3000/login
-GET  http://localhost:3000/admin
-GET  http://localhost:3000/menu/table/{tableCode}
-GET  http://localhost:8080/
-GET  http://localhost:8080/actuator/health
+GET http://localhost:3000/login
+GET http://localhost:3000/admin
+GET http://localhost:3000/menu/table/{tableCode}
+GET http://localhost:8080/
+GET http://localhost:8080/actuator/health
 ```
 
-`/kitchen` route'u artık ayrı bir ekran değil, `/admin` paneline yönlendirilir. Mutfak paneli admin içinde bir operasyon bölümü olarak çalışır.
+`/kitchen` artık ayrı bir ekran değildir. Mutfak operasyonları `/admin` paneli içinde yönetilir.
 
-## Kullanıcı Rolleri
+## Roller
 
-`ADMIN`:
+`ADMIN` kullanıcıları:
 
-- Restoran bilgisini düzenler.
+- Restoran adını, telefonunu ve adresini düzenler.
 - Masa ve QR linklerini yönetir.
 - Kategori ve ürünleri yönetir.
-- Kullanıcı ekler, günceller ve siler.
-- Operasyon, mutfak, sipariş geçmişi, servis istekleri ve puanları görür.
+- Ürünleri kategoriye göre filtreler.
+- Kullanıcıları yönetir.
+- Operasyon, mutfak, siparişler, servis istekleri ve puanları görür ve yönetir.
 
-`STAFF`:
+`STAFF` kullanıcıları:
 
 - Operasyon panelini kullanır.
-- Aktif siparişleri ve mutfak akışını yönetir.
-- Garson çağrıları ve hesap isteklerini kapatır.
-- Sipariş geçmişi, istek geçmişi ve puanları görür.
+- Aktif siparişleri ve mutfak durumunu yönetir.
+- Garson çağrılarını ve hesap isteklerini kapatır.
+- Sipariş geçmişini, istek geçmişini ve puanları görür.
 - Masa, menü, restoran ve ekip yönetimi sekmelerine erişemez.
+
+## Tek Restoran Modu
+
+Uygulama bilinçli olarak tek restoran üzerine tasarlanmıştır.
+
+- Public restoran oluşturma kapalıdır.
+- Restoran silme kapalıdır.
+- Restoran admin arayüzünden pasife alınamaz.
+- Backend restoran güncellemelerinde dışarıdan `active=false` gönderilse bile restoran aktif tutulur.
+
+Bu davranış, tek restoranın ve tüm QR menü linklerinin yanlışlıkla çevrim dışı kalmasını engeller.
 
 ## Ana API Endpointleri
 
@@ -228,16 +245,16 @@ GET  /actuator/health
 Restoran:
 
 ```text
-GET  /api/restaurants
-GET  /api/restaurants/current
-GET  /api/restaurants/public
-GET  /api/restaurants/{id}
-POST /api/restaurants
-PUT  /api/restaurants/{id}
+GET    /api/restaurants
+GET    /api/restaurants/current
+GET    /api/restaurants/public
+GET    /api/restaurants/{id}
+POST   /api/restaurants
+PUT    /api/restaurants/{id}
 DELETE /api/restaurants/{id}
 ```
 
-Not: Uygulama tek restoran modundadır. Public servis tarafında restoran oluşturma ve silme kapatılıdır; `POST /api/restaurants` ve `DELETE /api/restaurants/{id}` hata döner.
+Not: Tek restoran production modunda `POST /api/restaurants` ve `DELETE /api/restaurants/{id}` hata döner.
 
 Menü, masa, kategori ve ürün:
 
@@ -252,6 +269,7 @@ POST   /api/categories
 PUT    /api/categories/{id}
 DELETE /api/categories/{id}
 GET    /api/products?restaurantId={id}
+GET    /api/products?restaurantId={id}&categoryId={id}
 POST   /api/products
 PUT    /api/products/{id}
 DELETE /api/products/{id}
@@ -293,83 +311,102 @@ DELETE /api/users/{id}
 
 ## Müşteri Akışı
 
-1. Müşteri `PUBLIC_BASE_URL/menu/table/{tableCode}` linkinden menüye girer.
-2. Backend `tableCode` ile masayı ve aktif menü içeriğini bulur.
-3. Müşteri ürünleri sepete ekler; ürün bazlı not ve sipariş notu yazabilir.
-4. `POST /api/orders` ile sipariş oluşur ve backend benzersiz `trackingCode` üretir.
-5. Frontend bu `trackingCode` değerini masa koduna bağlı olarak `localStorage` içinde saklar.
-6. Sipariş takibi `GET /api/orders/track/{trackingCode}` ile yapılır.
-7. Sipariş `SERVED` olduğunda müşteri puan/yorum formunu görebilir.
-8. Sipariş `CANCELLED` olursa iptal nedeni müşteri ekranında gösterilir.
+1. Müşteri masa QR kodundan `{PUBLIC_BASE_URL}/menu/table/{tableCode}` adresini açar.
+2. Backend `tableCode` ile masayı ve aktif menü içeriğini çözer.
+3. Müşteri kategorileri gezer, ürün arar ve ürünleri sepete ekler.
+4. Sipariş öncesinde ürün notu ve sipariş notu ekleyebilir.
+5. `POST /api/orders` siparişi oluşturur ve güvenli bir `trackingCode` döner.
+6. Frontend `trackingCode` değerini `qr_menu_table_orders:{tableCode}` anahtarıyla `localStorage` içinde saklar.
+7. Müşteri sipariş durumunu `GET /api/orders/track/{trackingCode}` ile takip eder.
+8. Sipariş iptal edilirse iptal nedeni müşteri ekranında gösterilir.
+9. Sipariş servis edildiğinde müşteri puan ve yorum gönderebilir.
 
 Müşteri ayrıca menü ekranından garson çağırabilir veya hesap isteyebilir. Bu istekler public endpointlerle oluşturulur ve admin paneline canlı bildirim olarak düşer.
 
 ## Sipariş Takibi ve localStorage
 
-Müşteri siparişleri `qr_menu_table_orders:{tableCode}` anahtarıyla saklanır.
+Müşteri sipariş takibi şu anahtarı kullanır:
 
-- Sayfa yenilendiğinde aktif tracking code'lar backendden tekrar çekilir.
+```text
+qr_menu_table_orders:{tableCode}
+```
+
+- Aktif tracking code’lar sayfa yenilendikten sonra tekrar yüklenir.
 - `PENDING`, `PREPARING`, `READY` ve henüz puanlanmamış `SERVED` siparişler takipte kalır.
-- `CANCELLED` siparişler ve puanı gönderilmiş `SERVED` siparişler localStorage kaydından temizlenir.
-- Gizli sekme veya farklı cihaz kullanılırsa önceki localStorage kaydı bulunmayabilir.
+- `CANCELLED` siparişler ve puanlanmış `SERVED` siparişler local takipten kaldırılır.
+- Gizli sekme, farklı cihaz veya farklı tarayıcı önceki takip verisine sahip olmayabilir.
 
-## Admin Operasyon Paneli
+## Admin Paneli
 
 `/admin` paneli login gerektirir.
 
-Panel bölümleri:
+Admin bölümleri:
 
-- Operasyon: bekleyen garson/hesap istekleri ve mutfak kartları.
-- Sipariş Geçmişi: tüm siparişler ve kalem detayları.
+- Genel Bakış: metrikler, bekleyen servis istekleri ve mutfak kartları.
+- Sipariş Geçmişi: kalem detayları ve iptal nedenleriyle tüm siparişler.
 - İstek Geçmişi: garson çağrıları ve hesap istekleri.
-- Puanlar: ortalama puanlar ve müşteri yorumları.
-- Masalar ve QR: masa listesi, QR linki, QR kod modal'ı.
+- Puanlar: müşteri puanları ve yorumları.
+- Masalar ve QR: masa listesi, QR linki ve QR kod/PDF modalı.
 - Kategoriler: menü kategori yönetimi.
-- Ürünler: fiyat, görsel URL, kategori, satış durumu ve sıra yönetimi.
-- Ekip: admin/personel kullanıcıları.
-- Restoran: restoran adı, telefon, adres ve aktiflik.
+- Ürünler: kategori dropdown’ı ve kategori filtresiyle ürün yönetimi.
+- Ekip: admin ve personel kullanıcıları.
+- Restoran: restoran adı, telefon ve adres.
 
-Admin panel WebSocket bağlantısı açık değilse veri 15 saniyede bir yedek olarak yenilenir.
+Admin paneli geniş ekranlarda tablo, mobil ekranlarda kart düzeni kullanır. WebSocket bağlantısı yoksa admin verileri yedek olarak 15 saniyede bir yenilenir.
+
+## Çoklu Dil Desteği
+
+Frontend şu dilleri destekler:
+
+- Türkçe
+- İngilizce
+- Almanca
+- Arapça
+
+Dil seçimi hem admin panelini hem de müşteri menüsünü etkiler. Restoran adı, kategori adı, ürün adı, ürün açıklaması, notlar ve yorumlar gibi kullanıcı tarafından girilen veriler otomatik çevrilmez.
 
 ## WebSocket Bildirimleri
 
-Canlı bildirimler `/ws/admin` WebSocket endpointi ile gelir. Bağlantı doğrudan JWT ile değil, kısa ömürlü ticket ile kurulur:
+Canlı bildirimler şu akışla gelir:
 
 ```text
 GET /api/auth/ws-ticket
 ws://localhost:3000/ws/admin?ticket=...
 ```
 
-Backend `AdminNotificationService` şu olaylarda bildirim yayınlar:
+WebSocket bağlantısı JWT’yi doğrudan URL’de taşımak yerine kısa ömürlü ticket kullanır. `AdminNotificationWebSocketHandler` ticket’ı doğrular, oturumu mevcut restoranla ilişkilendirir ve bildirimleri sadece ilgili restoran oturumlarına gönderir.
+
+Backend bildirim event tipleri:
 
 - `ORDER_CREATED`
 - `WAITER_CALL_CREATED`
 - `BILL_REQUEST_CREATED`
+- `FEEDBACK_CREATED`
 
-Bildirimler restoran ID'sine göre ilgili admin/personel oturumlarına gönderilir. Teslimat hatası sipariş veya istek oluşturma akışını bozmaz.
+Bildirim teslimat hataları sipariş, istek veya geri bildirim oluşturma akışını bozmaz.
 
-Tarayıcı ses politikaları nedeniyle bildirim sesi için admin panelde önce `Sesi Aç` butonuna basılmalıdır. Mobil cihazlarda sessiz mod, kilit ekranı veya arka plan sekmesi sesi engelleyebilir.
+Tarayıcı ses politikaları nedeniyle admin kullanıcısının bildirim sesi için önce panelde `Sesi Aç` butonuna basması gerekir. Mobil sessiz mod, kilit ekranı veya arka plan sekmeleri sesi engelleyebilir.
 
 ## Auth, Cookie ve CSRF
 
 Login sonrası backend JWT üretir:
 
 - `qr_menu_token` HttpOnly cookie olarak set edilir.
-- Frontend aynı token'ı `localStorage` içinde API istekleri için saklar.
-- Axios isteklerinde token varsa `Authorization: Bearer <token>` header'ı gönderilir.
+- Frontend aynı token’ı API istekleri için `localStorage` içinde de saklar.
+- Axios, token varsa `Authorization: Bearer <token>` header’ı gönderir.
 
 CSRF davranışı:
 
 - Bearer token ile gelen stateless istekler CSRF kontrolünden muaftır.
-- Cookie-only mutasyonlarda `XSRF-TOKEN` cookie ve `X-XSRF-TOKEN` header'ı kullanılır.
-- `/api/csrf` token üretir.
-- Public müşteri mutasyonları CSRF ignore listesindedir: sipariş, feedback, garson çağrısı ve hesap isteği.
+- Cookie-only mutasyonlarda `XSRF-TOKEN` cookie ve `X-XSRF-TOKEN` header’ı kullanılır.
+- `/api/csrf` CSRF token üretir.
+- Public müşteri mutasyonları CSRF korumasından hariçtir: sipariş, feedback, garson çağrısı ve hesap isteği.
 
-Public endpointler için `PUBLIC_RATE_LIMIT_PER_MINUTE` ile dakika bazlı basit rate limit uygulanır.
+Public endpointler `PUBLIC_RATE_LIMIT_PER_MINUTE` ile sınırlandırılır.
 
-## QR Mantığı
+## QR Link Mantığı
 
-Her masa için benzersiz `tableCode` bulunur. QR linki şu formattadır:
+Her masanın benzersiz bir `tableCode` değeri vardır. QR linkleri şu formatı kullanır:
 
 ```text
 {PUBLIC_BASE_URL}/menu/table/{tableCode}
@@ -381,7 +418,7 @@ Her masa için benzersiz `tableCode` bulunur. QR linki şu formattadır:
 http://localhost:3000/menu/table/r1-t7-a1b2c3d4
 ```
 
-`PUBLIC_BASE_URL` doğru ayarlanmazsa admin panelde üretilen QR linkleri yanlış domaini gösterebilir.
+`PUBLIC_BASE_URL` yanlışsa admin panelde üretilen QR linkleri yanlış domaini gösterebilir.
 
 ## Veritabanı ve Migration
 
@@ -407,19 +444,23 @@ Ana tablolar:
 - `users`
 - `feedbacks`
 
-`JPA_DDL_AUTO=validate` önerilir. Şemayı Flyway yönetir.
+`JPA_DDL_AUTO=validate` önerilir. Şema değişiklikleri Flyway ile yönetilir.
 
 ## Demo Veri
 
-Demo seed sadece `SEED_ENABLED=true` iken çalışır.
+Demo seed sadece şu ayar açıkken çalışır:
 
-Seeder örnek olarak:
+```env
+SEED_ENABLED=true
+```
 
-- `Semua Restorant` restoranını,
-- 8 masa ve QR kodlarını,
-- başlangıç, ana yemek, içecek ve tatlı kategorilerini,
-- örnek ürünleri,
-- bir admin kullanıcıyı oluşturur.
+Seeder şunları oluşturur:
+
+- `Semua Restorant`
+- 8 masa ve QR kodları
+- Başlangıç, ana yemek, içecek ve tatlı kategorileri
+- Örnek ürünler
+- Bir admin kullanıcısı
 
 Production ortamında `SEED_ENABLED=false` kullanılmalıdır. Gerçek admin ve restoran verileri kontrollü şekilde oluşturulmalıdır.
 
@@ -451,9 +492,9 @@ Volume dahil sıfırlama:
 docker compose down -v
 ```
 
-Backend klasöründeki compose dosyası backend portunu `${SERVER_PORT}:8080` olarak host'a açar ve frontend build context'ini `../frontend` olarak kullanır.
+`backend/` içindeki compose dosyası backend portunu `${SERVER_PORT}:8080` olarak açar ve frontend build context’i için `../frontend` klasörünü kullanır.
 
-## Production Ayarları
+## Production Kontrol Listesi
 
 Backend için önerilen ayarlar:
 
@@ -483,21 +524,21 @@ VITE_API_BASE_URL=https://api-domain.com
 VITE_WS_BASE_URL=wss://api-domain.com
 ```
 
-Production kontrol listesi:
+Production öncesi kontrol:
 
 - `/actuator/health` `UP` dönüyor mu?
 - `COOKIE_SECURE=true` mi?
 - `JWT_SECRET` güçlü ve repository dışında mı?
 - `CORS_ALLOWED_ORIGINS` sadece gerçek frontend domainini içeriyor mu?
-- `PUBLIC_BASE_URL` QR kodlar için doğru domain mi?
+- `PUBLIC_BASE_URL` QR menü domainiyle aynı mı?
 - Admin login çalışıyor mu?
-- Masa QR linki müşteri menüsünü açıyor mu?
+- Masa QR linkleri müşteri menüsünü açıyor mu?
 - Sipariş oluşturma ve durum güncelleme çalışıyor mu?
 - İptal nedeni müşteri ekranında görünüyor mu?
 - Garson çağrısı ve hesap isteği admin paneline düşüyor mu?
-- WebSocket bildirimi ve yedek polling çalışıyor mu?
-- Bildirim sesi masaüstü ve mobilde test edildi mi?
-- Müşteri puanı `SERVED` sipariş sonrası alınabiliyor mu?
+- Servis sonrası feedback çalışıyor mu?
+- WebSocket bildirimleri ve yedek polling çalışıyor mu?
+- Bildirim sesi desktop ve mobilde test edildi mi?
 
 ## Test ve Build
 
@@ -523,49 +564,49 @@ docker compose build
 
 ## Güvenlik Notları
 
-- Production'da varsayılan `JWT_SECRET` kullanılmaz.
-- Production'da `COOKIE_SECURE=true` kullanılır.
-- Production'da `SEED_ENABLED=false` kullanılır.
-- PostgreSQL dış dünyaya açılmaz.
-- CORS sadece gerçek frontend domainleriyle sınırlandırılır.
+- Production’da varsayılan `JWT_SECRET` kullanılmaz.
+- Production’da `COOKIE_SECURE=true` kullanılmalıdır.
+- Production’da `SEED_ENABLED=false` kullanılmalıdır.
+- PostgreSQL public internete açılmamalıdır.
+- CORS sadece gerçek frontend domainleriyle sınırlandırılmalıdır.
 - Admin ve personel parolaları güçlü olmalıdır.
-- `.env` dosyaları repository'ye commit edilmez.
+- `.env` dosyaları commit edilmemelidir.
 - Public sipariş takibi tahmin edilebilir ID ile değil, `trackingCode` ile yapılır.
-- WebSocket bağlantısı ticket ile açılır; ticket tek kullanımlık olarak tüketilir.
+- WebSocket bağlantıları kısa ömürlü ticket kullanır; ticket tek kullanımlık tüketilir.
 
-## Sık Karşılaşılan Durumlar
+## Sorun Giderme
 
 `docker compose up` çalışmıyor:
 
-- Komutun `qr-menu/` kök klasöründe çalıştığından emin olun.
-- Sadece backend compose kullanılıyorsa `backend/` klasörüne geçin.
-- `.env` ve `backend/.env` dosyalarının var olduğunu kontrol edin.
+- Komutu `qr-menu/` kök dizininden çalıştırın.
+- Sadece backend compose dosyasını kullanıyorsanız `backend/` dizininden çalıştırın.
+- `.env` ve `backend/.env` dosyalarının var olduğundan emin olun.
 
-Admin panel isteklerde 401 alıyor:
+Admin paneli 401 dönüyor:
 
-- Login token'ı süresi dolmuş olabilir; tekrar giriş yapın.
-- Frontend `VITE_API_BASE_URL` doğru backend originini göstermeli.
-- Backend `CORS_ALLOWED_ORIGINS` frontend originini içermeli.
+- Login token süresi dolmuş olabilir; tekrar giriş yapın.
+- `VITE_API_BASE_URL` doğru backend originini göstermelidir.
+- `CORS_ALLOWED_ORIGINS` frontend originini içermelidir.
 
 WebSocket bağlanmıyor:
 
-- `/api/auth/ws-ticket` authenticated olarak çalışmalı.
-- Reverse proxy `/ws` için `Upgrade` ve `Connection` header'larını geçirmeli.
-- HTTPS production ortamında WebSocket adresi `wss://` olmalı.
+- `/api/auth/ws-ticket` authenticated kullanıcı için çalışmalıdır.
+- Reverse proxy `/ws` için `Upgrade` ve `Connection` header’larını geçirmelidir.
+- HTTPS production ortamında `wss://` kullanılmalıdır.
 
-Bildirim sesi gelmiyor:
+Bildirim sesi çalmıyor:
 
 - Admin panelde `Sesi Aç` butonuna basın.
-- Mobil cihaz sessiz modda olmamalı.
-- Mobil tarayıcılarda arka plan sekmesi veya kilit ekranı sesi engelleyebilir.
+- Mobil sessiz modu kontrol edin.
+- Arka plan sekmeleri ve kilit ekranı tarayıcı sesini engelleyebilir.
 
 Müşteri siparişi yenilemeden sonra görünmüyor:
 
-- Aynı cihaz ve aynı tarayıcı kullanılmalı.
-- Gizli sekmede localStorage kalıcı olmayabilir.
-- Sipariş `CANCELLED` ise veya `SERVED` sonrası puan gönderildiyse takip kaydı temizlenir.
+- Aynı cihaz ve tarayıcıyı kullanın.
+- Gizli sekmeler `localStorage` verisini kalıcı tutmayabilir.
+- `CANCELLED` siparişler ve puanlanmış `SERVED` siparişler takipten kaldırılır.
 
-QR linki yanlış domain açıyor:
+QR linki yanlış domaini açıyor:
 
-- Backend `PUBLIC_BASE_URL` değerini kontrol edin.
-- Docker/Nginx veya deployment domaini değiştiyse backend yeniden deploy edilmelidir.
+- `PUBLIC_BASE_URL` değerini kontrol edin.
+- QR domain ayarı değiştiyse backend’i yeniden başlatın veya yeniden deploy edin.
