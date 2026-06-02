@@ -902,9 +902,6 @@ function RestaurantFields({ t }) {
       <Form.Item name="address" label={t('admin.forms.address')}>
         <Input.TextArea rows={3} />
       </Form.Item>
-      <Form.Item name="active" label={t('admin.columns.active')} valuePropName="checked">
-        <Switch />
-      </Form.Item>
     </>
   );
 }

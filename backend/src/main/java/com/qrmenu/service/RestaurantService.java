@@ -83,9 +83,7 @@ public class RestaurantService {
         restaurant.setName(request.name());
         restaurant.setAddress(request.address());
         restaurant.setPhone(request.phone());
-        if (request.active() != null) {
-            restaurant.setActive(request.active());
-        }
+        restaurant.setActive(true);
     }
 
     public RestaurantResponse toResponse(Restaurant restaurant) {
