@@ -3,6 +3,7 @@ package com.qrmenu.service;
 import com.qrmenu.config.AdminNotificationWebSocketHandler;
 import com.qrmenu.dto.AdminNotification;
 import com.qrmenu.dto.BillRequestResponse;
+import com.qrmenu.dto.FeedbackResponse;
 import com.qrmenu.dto.OrderResponse;
 import com.qrmenu.dto.WaiterCallResponse;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,19 @@ public class AdminNotificationService {
                 billRequest.id(),
                 "Hesap isteği",
                 "Masa " + billRequest.tableNumber() + " hesap istedi.",
+                Instant.now()
+        ));
+    }
+
+    public void feedbackCreated(FeedbackResponse feedback) {
+        publish(new AdminNotification(
+                "FEEDBACK_CREATED",
+                feedback.restaurantId(),
+                feedback.tableId(),
+                feedback.tableNumber(),
+                feedback.id(),
+                "Yeni puanlama",
+                "Masa " + feedback.tableNumber() + " yeni puanlama gönderdi.",
                 Instant.now()
         ));
     }

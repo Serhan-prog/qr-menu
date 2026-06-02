@@ -74,7 +74,7 @@ public class DataSeeder implements CommandLineRunner {
         admin.setRestaurant(restaurant);
         admin.setEmail("serhanbozdemir3444@gmail.com");
         admin.setFullName("Serhan Bozdemir");
-        admin.setPasswordHash(passwordEncoder.encode("1"));
+        admin.setPasswordHash(passwordEncoder.encode("s1"));
         admin.setRole(UserRole.ADMIN);
         userRepository.save(admin);
     }

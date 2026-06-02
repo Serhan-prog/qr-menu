@@ -81,6 +81,7 @@ function AdminDashboard() {
   const [cancellationModal, setCancellationModal] = useState({ order: null, reason: '' });
   const [qrRecord, setQrRecord] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
   const [realtimeStatus, setRealtimeStatus] = useState('closed');
   const [soundEnabled, setSoundEnabled] = useState(isNotificationSoundReady());
   const [form] = Form.useForm();
@@ -108,11 +109,12 @@ function AdminDashboard() {
       onStatusChange: setRealtimeStatus,
       onNotification: (notification) => {
         playNotificationSound();
-        message.info(`${notification.title}: ${notification.message}`);
+        const localizedNotification = adminNotificationText(notification, t);
+        message.info(`${localizedNotification.title}: ${localizedNotification.message}`);
         loadScopedData(restaurantId);
       },
     });
-  }, [restaurantId]);
+  }, [restaurantId, t]);
 
   useEffect(() => {
     if (!restaurantId || realtimeStatus === 'connected') {
@@ -138,6 +140,24 @@ function AdminDashboard() {
       waiterCalls.filter((call) => ['OPEN', 'IN_PROGRESS'].includes(call.status)).length +
       billRequests.filter((request) => request.status === 'OPEN').length,
     [waiterCalls, billRequests]
+  );
+
+  const productCategoryOptions = useMemo(
+    () => [
+      { label: t('admin.messages.allCategories'), value: 'all' },
+      ...categories
+        .map((category) => ({ label: category.name, value: category.id }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'tr')),
+    ],
+    [categories, t]
+  );
+
+  const filteredProducts = useMemo(
+    () =>
+      productCategoryFilter === 'all'
+        ? products
+        : products.filter((product) => product.categoryId === productCategoryFilter),
+    [products, productCategoryFilter]
   );
 
   const loadAll = async () => {
@@ -210,12 +230,12 @@ function AdminDashboard() {
         await loadScopedData();
       }
       if (modal.type === 'category') {
-        const payload = { ...values, restaurantId };
+        const payload = { ...values, restaurantId, sortOrder: modal.record?.sortOrder ?? 0 };
         modal.record ? await qrMenuApi.updateCategory(modal.record.id, payload) : await qrMenuApi.createCategory(payload);
         await loadScopedData();
       }
       if (modal.type === 'product') {
-        const payload = { ...values, restaurantId };
+        const payload = { ...values, restaurantId, sortOrder: modal.record?.sortOrder ?? 0 };
         modal.record ? await qrMenuApi.updateProduct(modal.record.id, payload) : await qrMenuApi.createProduct(payload);
         await loadScopedData();
       }
@@ -227,7 +247,7 @@ function AdminDashboard() {
         modal.record ? await qrMenuApi.updateUser(modal.record.id, payload) : await qrMenuApi.createUser(payload);
         await loadScopedData();
       }
-      message.success('Kaydedildi');
+      message.success(t('admin.messages.saved'));
       closeModal();
     } catch (error) {
       message.error(apiError(error));
@@ -244,7 +264,7 @@ function AdminDashboard() {
       };
       await actions[type](id);
       await loadScopedData();
-      message.success('Silindi');
+      message.success(t('admin.messages.deleted'));
     } catch (error) {
       message.error(apiError(error));
     }
@@ -257,24 +277,24 @@ function AdminDashboard() {
 
     const canvas = document.getElementById('qr-pdf-canvas');
     if (!(canvas instanceof HTMLCanvasElement)) {
-      message.error('QR kod hazirlanamadi');
+      message.error(t('admin.messages.qrFailed'));
       return;
     }
 
     const pdf = createQrPdf({
       imageDataUrl: canvas.toDataURL('image/jpeg', 0.96),
-      title: `Masa ${qrRecord.tableNumber} QR Kodu`,
+      title: `${t('admin.columns.table')} ${qrRecord.tableNumber} ${t('admin.columns.qr')} ${t('admin.columns.code')}`,
       subtitle: restaurantName,
       url: qrRecord.qrUrl,
     });
-    downloadBlob(pdf, `masa-${qrRecord.tableNumber}-qr.pdf`);
+    downloadBlob(pdf, `table-${qrRecord.tableNumber}-qr.pdf`);
   };
 
   const updateOrderStatus = async (id, status, cancellationReason) => {
     try {
       await qrMenuApi.updateOrderStatus(id, status, cancellationReason);
       await loadScopedData();
-      message.success('Sipariş durumu güncellendi');
+      message.success(t('admin.messages.orderStatusUpdated'));
     } catch (error) {
       message.error(apiError(error));
     }
@@ -291,7 +311,7 @@ function AdminDashboard() {
   const cancelOrder = async () => {
     const reason = cancellationModal.reason.trim();
     if (!reason) {
-      message.warning('Müşteriye gösterilecek iptal nedenini girin');
+      message.warning(t('admin.messages.cancellationReasonRequired'));
       return;
     }
     await updateOrderStatus(cancellationModal.order.id, 'CANCELLED', reason);
@@ -302,7 +322,7 @@ function AdminDashboard() {
     try {
       await qrMenuApi.updateWaiterCallStatus(id, status);
       await loadScopedData();
-      message.success(status === 'COMPLETED' ? 'Garson çağrısı onaylandı' : 'Garson çağrısı kapatıldı');
+      message.success(status === 'COMPLETED' ? t('admin.messages.waiterApproved') : t('admin.messages.waiterClosed'));
     } catch (error) {
       message.error(apiError(error));
     }
@@ -312,7 +332,7 @@ function AdminDashboard() {
     try {
       await qrMenuApi.updateBillRequestStatus(id, status);
       await loadScopedData();
-      message.success(status === 'PAID' ? 'Hesap isteği ödendi olarak işaretlendi' : 'Hesap isteği kapatıldı');
+      message.success(status === 'PAID' ? t('admin.messages.billPaid') : t('admin.messages.billClosed'));
     } catch (error) {
       message.error(apiError(error));
     }
@@ -322,19 +342,25 @@ function AdminDashboard() {
     const enabled = await enableNotificationSound();
     setSoundEnabled(enabled);
     if (enabled) {
-      message.success('Bildirim sesi aktif');
+      message.success(t('admin.messages.soundEnabled'));
       return;
     }
-    message.warning('Tarayıcı sesi engelledi. Sayfayla etkileşime geçip tekrar deneyin.');
+    message.warning(t('admin.messages.soundBlocked'));
   };
 
   const actionColumn = (type) => ({
-    title: '',
+    title: t('admin.columns.action'),
     width: 120,
+    onCell: mobileCellLabel(t('admin.columns.action')),
     render: (_, record) => (
       <Space>
         <Button icon={<EditOutlined />} onClick={() => openModal(type, record)} />
-        <Popconfirm title="Silinsin mi?" okText="Sil" cancelText="Vazgeç" onConfirm={() => remove(type, record.id)}>
+        <Popconfirm
+          title={t('admin.actions.confirmDelete')}
+          okText={t('admin.actions.delete')}
+          cancelText={t('common.cancel')}
+          onConfirm={() => remove(type, record.id)}
+        >
           <Button danger icon={<DeleteOutlined />} />
         </Popconfirm>
       </Space>
@@ -348,7 +374,7 @@ function AdminDashboard() {
       // Local auth state is cleared even if the network request fails.
     }
     clearAuth();
-    message.success('Çıkış yapıldı');
+    message.success(t('admin.messages.loggedOut'));
     navigate('/login');
   };
 
@@ -359,7 +385,7 @@ function AdminDashboard() {
       icon: <ShopOutlined />,
       children: (
         <div className="dashboard-grid">
-          <Card className="section-card dashboard-main-card" title="Bekleyen İstekler">
+          <Card className="section-card dashboard-main-card" title={t('admin.sections.pendingRequests')}>
             <AdminRequestsPanel
               waiterCalls={waiterCalls}
               billRequests={billRequests}
@@ -367,7 +393,7 @@ function AdminDashboard() {
               onBillStatusChange={updateBillStatus}
             />
           </Card>
-          <Card className="section-card dashboard-main-card" title="Mutfak">
+          <Card className="section-card dashboard-main-card" title={t('admin.sections.kitchen')}>
             <AdminKitchenPanel orders={orders} onStatusChange={updateOrderStatus} onCancel={requestOrderCancellation} />
           </Card>
         </div>
@@ -380,6 +406,7 @@ function AdminDashboard() {
       children: (
         <DataSection title={t('admin.tabs.orders')}>
           <OrdersTable
+            t={t}
             loading={loading}
             orders={orders}
           />
@@ -392,6 +419,7 @@ function AdminDashboard() {
       icon: <HistoryOutlined />,
       children: (
         <RequestsHistory
+          t={t}
           loading={loading}
           waiterCalls={waiterCalls}
           billRequests={billRequests}
@@ -402,7 +430,7 @@ function AdminDashboard() {
       key: 'feedbacks',
       label: t('admin.tabs.feedbacks'),
       icon: <StarOutlined />,
-      children: <FeedbackSection loading={loading} feedbacks={feedbacks} />,
+      children: <FeedbackSection t={t} loading={loading} feedbacks={feedbacks} />,
     },
     {
       key: 'tables',
@@ -410,21 +438,23 @@ function AdminDashboard() {
       label: t('admin.tabs.tables'),
       icon: <TableOutlined />,
       children: (
-        <DataSection title="Masalar" onAdd={() => openModal('table')}>
+        <DataSection title={t('admin.sections.tables')} onAdd={() => openModal('table')}>
           <Table
+            className="admin-data-table"
             size="middle"
             scroll={{ x: 760 }}
             rowKey="id"
             loading={loading}
             dataSource={tables}
             columns={[
-              { title: 'Masa', dataIndex: 'tableNumber', sorter: (a, b) => a.tableNumber - b.tableNumber },
-              { title: 'Kod', dataIndex: 'tableCode' },
-              { title: 'QR Link', dataIndex: 'qrUrl', render: (value) => <Text copyable>{value}</Text> },
-              { title: 'Aktif', dataIndex: 'active', render: activeTag },
+              { title: t('admin.columns.table'), dataIndex: 'tableNumber', sorter: (a, b) => a.tableNumber - b.tableNumber, onCell: mobileCellLabel(t('admin.columns.table')) },
+              { title: t('admin.columns.code'), dataIndex: 'tableCode', onCell: mobileCellLabel(t('admin.columns.code')) },
+              { title: t('admin.columns.qrLink'), dataIndex: 'qrUrl', render: (value) => <Text copyable>{value}</Text>, onCell: mobileCellLabel(t('admin.columns.qrLink')) },
+              { title: t('admin.columns.active'), dataIndex: 'active', render: (value) => activeTag(value, t), onCell: mobileCellLabel(t('admin.columns.active')) },
               {
-                title: 'QR',
+                title: t('admin.columns.qr'),
                 width: 72,
+                onCell: mobileCellLabel(t('admin.columns.qr')),
                 render: (_, record) => <Button icon={<QrcodeOutlined />} onClick={() => setQrRecord(record)} />,
               },
               actionColumn('table'),
@@ -441,16 +471,16 @@ function AdminDashboard() {
       children: (
         <DataSection title={t('admin.tabs.categories')} onAdd={() => openModal('category')}>
           <Table
+            className="admin-data-table"
             size="middle"
             scroll={{ x: 640 }}
             rowKey="id"
             loading={loading}
             dataSource={categories}
             columns={[
-              { title: 'Ad', dataIndex: 'name' },
-              { title: 'Açıklama', dataIndex: 'description' },
-              { title: 'Sıra', dataIndex: 'sortOrder' },
-              { title: 'Aktif', dataIndex: 'active', render: activeTag },
+              { title: t('admin.columns.name'), dataIndex: 'name', onCell: mobileCellLabel(t('admin.columns.name')) },
+              { title: t('admin.columns.description'), dataIndex: 'description', onCell: mobileCellLabel(t('admin.columns.description')) },
+              { title: t('admin.columns.active'), dataIndex: 'active', render: (value) => activeTag(value, t), onCell: mobileCellLabel(t('admin.columns.active')) },
               actionColumn('category'),
             ]}
           />
@@ -464,18 +494,27 @@ function AdminDashboard() {
       icon: <AppstoreOutlined />,
       children: (
         <DataSection title={t('admin.tabs.products')} onAdd={() => openModal('product')}>
+          <div className="admin-table-toolbar">
+            <Select
+              className="admin-filter-select"
+              value={productCategoryFilter}
+              options={productCategoryOptions}
+              onChange={setProductCategoryFilter}
+            />
+            <Text type="secondary">{filteredProducts.length} {t('admin.messages.productsShown')}</Text>
+          </div>
           <Table
+            className="admin-data-table"
             size="middle"
             scroll={{ x: 640 }}
             rowKey="id"
             loading={loading}
-            dataSource={products}
+            dataSource={filteredProducts}
             columns={[
-              { title: 'Ad', dataIndex: 'name' },
-              { title: 'Kategori', dataIndex: 'categoryName' },
-              { title: 'Fiyat', dataIndex: 'price', render: currency },
-              { title: 'Sıra', dataIndex: 'sortOrder' },
-              { title: 'Satışta', dataIndex: 'available', render: activeTag },
+              { title: t('admin.columns.name'), dataIndex: 'name', onCell: mobileCellLabel(t('admin.columns.name')) },
+              { title: t('admin.columns.category'), dataIndex: 'categoryName', onCell: mobileCellLabel(t('admin.columns.category')) },
+              { title: t('admin.columns.price'), dataIndex: 'price', render: currency, onCell: mobileCellLabel(t('admin.columns.price')) },
+              { title: t('admin.columns.available'), dataIndex: 'available', render: (value) => activeTag(value, t), onCell: mobileCellLabel(t('admin.columns.available')) },
               actionColumn('product'),
             ]}
           />
@@ -488,19 +527,20 @@ function AdminDashboard() {
       label: t('admin.tabs.users'),
       icon: <TeamOutlined />,
       children: (
-        <DataSection title="Kullanıcılar" onAdd={() => openModal('user')}>
+        <DataSection title={t('admin.sections.users')} onAdd={() => openModal('user')}>
           <Table
+            className="admin-data-table"
             size="middle"
             scroll={{ x: 760 }}
             rowKey="id"
             loading={loading}
             dataSource={users}
             columns={[
-              { title: 'Ad Soyad', dataIndex: 'fullName' },
-              { title: 'E-posta', dataIndex: 'email' },
-              { title: 'Rol', dataIndex: 'role', render: roleTag },
-              { title: 'Aktif', dataIndex: 'active', render: activeTag },
-              { title: 'Güncellendi', dataIndex: 'updatedAt', render: dateTime },
+              { title: t('admin.columns.fullName'), dataIndex: 'fullName', onCell: mobileCellLabel(t('admin.columns.fullName')) },
+              { title: t('admin.columns.email'), dataIndex: 'email', onCell: mobileCellLabel(t('admin.columns.email')) },
+              { title: t('admin.columns.role'), dataIndex: 'role', render: (value) => roleTag(value, t), onCell: mobileCellLabel(t('admin.columns.role')) },
+              { title: t('admin.columns.active'), dataIndex: 'active', render: (value) => activeTag(value, t), onCell: mobileCellLabel(t('admin.columns.active')) },
+              { title: t('admin.columns.updatedAt'), dataIndex: 'updatedAt', render: dateTime, onCell: mobileCellLabel(t('admin.columns.updatedAt')) },
               actionColumn('user'),
             ]}
           />
@@ -513,13 +553,13 @@ function AdminDashboard() {
       label: t('admin.tabs.restaurant'),
       icon: <ShopOutlined />,
       children: (
-        <DataSection title="Restoran Bilgisi">
+        <DataSection title={t('admin.sections.restaurantInfo')}>
           <Card className="restaurant-profile-card">
             <Title level={3}>{restaurant?.name}</Title>
             <Text>{restaurant?.address}</Text>
             <Text>{restaurant?.phone}</Text>
             <Button type="primary" icon={<EditOutlined />} onClick={() => openModal('restaurant', restaurant)}>
-              Restoranı Düzenle
+              {t('admin.actions.editRestaurant')}
             </Button>
           </Card>
         </DataSection>
@@ -561,7 +601,7 @@ function AdminDashboard() {
           onClick={({ key }) => setActiveTab(key)}
         />
         <div className="admin-sider-footer">
-          <Text>{user?.fullName || 'Personel'} - {roleLabel(user?.role)}</Text>
+          <Text>{user?.fullName || t('common.staff')} - {roleLabel(user?.role, t)}</Text>
           <Button block danger icon={<LogoutOutlined />} onClick={logout}>
             {t('common.logout')}
           </Button>
@@ -597,6 +637,7 @@ function AdminDashboard() {
           <Menu
             className="mobile-admin-menu"
             mode="horizontal"
+            disabledOverflow
             selectedKeys={[activeTab]}
             items={sidebarItems}
             onClick={({ key }) => setActiveTab(key)}
@@ -627,7 +668,7 @@ function AdminDashboard() {
       </Layout>
 
       <Modal
-        title={modalTitle(modal.type, modal.record)}
+        title={modalTitle(modal.type, modal.record, t)}
         open={Boolean(modal.type)}
         onCancel={closeModal}
         onOk={saveModal}
@@ -636,22 +677,22 @@ function AdminDashboard() {
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          {modal.type === 'restaurant' && <RestaurantFields />}
-          {modal.type === 'table' && <TableFields />}
-          {modal.type === 'category' && <CategoryFields />}
-          {modal.type === 'product' && <ProductFields categories={categories} />}
-          {modal.type === 'user' && <UserFields isEditing={Boolean(modal.record)} />}
+          {modal.type === 'restaurant' && <RestaurantFields t={t} />}
+          {modal.type === 'table' && <TableFields t={t} />}
+          {modal.type === 'category' && <CategoryFields t={t} />}
+          {modal.type === 'product' && <ProductFields t={t} categories={categories} />}
+          {modal.type === 'user' && <UserFields t={t} isEditing={Boolean(modal.record)} />}
         </Form>
       </Modal>
 
       <Modal
-        title={qrRecord ? `Masa ${qrRecord.tableNumber} QR Kodu` : 'QR Kodu'}
+        title={qrRecord ? `${t('admin.columns.table')} ${qrRecord.tableNumber} ${t('admin.columns.qr')} ${t('admin.columns.code')}` : `${t('admin.columns.qr')} ${t('admin.columns.code')}`}
         open={Boolean(qrRecord)}
         onCancel={() => setQrRecord(null)}
         footer={[
-          <Button key="close" onClick={() => setQrRecord(null)}>Kapat</Button>,
-          <Button key="pdf" icon={<DownloadOutlined />} onClick={downloadQrPdf}>PDF Indir</Button>,
-          <Button key="open" type="primary" onClick={() => qrRecord && window.open(qrRecord.qrUrl, '_blank')}>Menüyü Aç</Button>,
+          <Button key="close" onClick={() => setQrRecord(null)}>{t('common.close')}</Button>,
+          <Button key="pdf" icon={<DownloadOutlined />} onClick={downloadQrPdf}>{t('admin.actions.downloadPdf')}</Button>,
+          <Button key="open" type="primary" onClick={() => qrRecord && window.open(qrRecord.qrUrl, '_blank')}>{t('common.openMenu')}</Button>,
         ]}
       >
         {qrRecord && (
@@ -665,26 +706,26 @@ function AdminDashboard() {
               includeMargin
               style={{ display: 'none' }}
             />
-            <Title level={4}>Masa {qrRecord.tableNumber}</Title>
+            <Title level={4}>{t('admin.columns.table')} {qrRecord.tableNumber}</Title>
             <Text copyable>{qrRecord.qrUrl}</Text>
           </div>
         )}
       </Modal>
       <Modal
-        title={cancellationModal.order ? `Masa ${cancellationModal.order.tableNumber} Siparişini İptal Et` : 'Siparişi İptal Et'}
+        title={cancellationModal.order ? `${t('admin.columns.table')} ${cancellationModal.order.tableNumber} - ${t('admin.actions.cancelOrder')}` : t('admin.actions.cancelOrder')}
         open={Boolean(cancellationModal.order)}
         onCancel={closeOrderCancellation}
         onOk={cancelOrder}
-        okText="Siparişi İptal Et"
+        okText={t('admin.actions.cancelOrder')}
         okButtonProps={{ danger: true }}
-        cancelText="Vazgeç"
+        cancelText={t('common.cancel')}
       >
         <div className="cancel-order-form">
-          <Text>Müşteri bu nedeni sipariş takibinde görecek.</Text>
+          <Text>{t('admin.messages.customerCancellationInfo')}</Text>
           <Input.TextArea
             maxLength={500}
             rows={4}
-            placeholder="Örn. Seçilen ürün stokta kalmadı."
+            placeholder={t('admin.messages.cancellationPlaceholder')}
             value={cancellationModal.reason}
             onChange={(event) => setCancellationModal((current) => ({ ...current, reason: event.target.value }))}
           />
@@ -694,7 +735,7 @@ function AdminDashboard() {
   );
 }
 
-function OrdersTable({ loading, orders }) {
+function OrdersTable({ t, loading, orders }) {
   return (
     <Table
       className="history-table orders-history-table"
@@ -706,8 +747,8 @@ function OrdersTable({ loading, orders }) {
       expandable={{
         expandedRowRender: (order) => (
           <div className="order-detail">
-            {order.note && <Text className="order-note"><strong>Sipariş notu:</strong> {order.note}</Text>}
-            {order.cancellationReason && <Text className="cancelled-order-note"><strong>İptal nedeni:</strong> {order.cancellationReason}</Text>}
+            {order.note && <Text className="order-note"><strong>{t('admin.messages.orderNote')}:</strong> {order.note}</Text>}
+            {order.cancellationReason && <Text className="cancelled-order-note"><strong>{t('admin.messages.cancellationReason')}:</strong> {order.cancellationReason}</Text>}
             <Table
               className="order-items-table"
               size="small"
@@ -716,30 +757,30 @@ function OrdersTable({ loading, orders }) {
               pagination={false}
               dataSource={order.items}
               columns={[
-                { title: 'Ürün', dataIndex: 'productName', width: '30%', onCell: mobileCellLabel('Ürün') },
-                { title: 'Adet', dataIndex: 'quantity', width: '12%', onCell: mobileCellLabel('Adet') },
-                { title: 'Ürün Notu', dataIndex: 'note', width: '30%', render: (value) => value || '-', onCell: mobileCellLabel('Ürün Notu') },
-                { title: 'Birim', dataIndex: 'unitPrice', width: '14%', render: currency, onCell: mobileCellLabel('Birim') },
-                { title: 'Toplam', dataIndex: 'lineTotal', width: '14%', render: currency, onCell: mobileCellLabel('Toplam') },
+                { title: t('admin.columns.product'), dataIndex: 'productName', width: '30%', onCell: mobileCellLabel(t('admin.columns.product')) },
+                { title: t('admin.columns.quantity'), dataIndex: 'quantity', width: '12%', onCell: mobileCellLabel(t('admin.columns.quantity')) },
+                { title: t('admin.columns.productNote'), dataIndex: 'note', width: '30%', render: (value) => value || '-', onCell: mobileCellLabel(t('admin.columns.productNote')) },
+                { title: t('admin.columns.unit'), dataIndex: 'unitPrice', width: '14%', render: currency, onCell: mobileCellLabel(t('admin.columns.unit')) },
+                { title: t('admin.columns.total'), dataIndex: 'lineTotal', width: '14%', render: currency, onCell: mobileCellLabel(t('admin.columns.total')) },
               ]}
             />
           </div>
         ),
       }}
       columns={[
-        { title: 'Masa', dataIndex: 'tableNumber', width: '18%', onCell: mobileCellLabel('Masa') },
-        { title: 'Durum', dataIndex: 'status', width: '24%', render: statusTag, onCell: mobileCellLabel('Durum') },
-        { title: 'Toplam', dataIndex: 'totalAmount', width: '22%', render: currency, onCell: mobileCellLabel('Toplam') },
-        { title: 'Tarih', dataIndex: 'createdAt', width: '36%', render: dateTime, onCell: mobileCellLabel('Tarih') },
+        { title: t('admin.columns.table'), dataIndex: 'tableNumber', width: '18%', onCell: mobileCellLabel(t('admin.columns.table')) },
+        { title: t('admin.columns.status'), dataIndex: 'status', width: '24%', render: (value) => statusTag(value, t), onCell: mobileCellLabel(t('admin.columns.status')) },
+        { title: t('admin.columns.total'), dataIndex: 'totalAmount', width: '22%', render: currency, onCell: mobileCellLabel(t('admin.columns.total')) },
+        { title: t('admin.columns.date'), dataIndex: 'createdAt', width: '36%', render: dateTime, onCell: mobileCellLabel(t('admin.columns.date')) },
       ]}
     />
   );
 }
 
-function RequestsHistory({ loading, waiterCalls, billRequests }) {
+function RequestsHistory({ t, loading, waiterCalls, billRequests }) {
   return (
     <div className="request-history-grid">
-      <DataSection title="Garson Çağrıları">
+      <DataSection title={t('admin.sections.waiterCalls')}>
         <Table
           className="history-table requests-history-table"
           size="middle"
@@ -748,14 +789,14 @@ function RequestsHistory({ loading, waiterCalls, billRequests }) {
           loading={loading}
           dataSource={waiterCalls}
           columns={[
-            { title: 'Masa', dataIndex: 'tableNumber', width: '16%', onCell: mobileCellLabel('Masa') },
-            { title: 'Mesaj', dataIndex: 'message', width: '34%', render: (value) => value || '-', onCell: mobileCellLabel('Mesaj') },
-            { title: 'Durum', dataIndex: 'status', width: '22%', render: statusTag, onCell: mobileCellLabel('Durum') },
-            { title: 'Oluşturuldu', dataIndex: 'createdAt', width: '28%', render: dateTime, onCell: mobileCellLabel('Oluşturuldu') },
+            { title: t('admin.columns.table'), dataIndex: 'tableNumber', width: '16%', onCell: mobileCellLabel(t('admin.columns.table')) },
+            { title: t('admin.columns.message'), dataIndex: 'message', width: '34%', render: (value) => value || '-', onCell: mobileCellLabel(t('admin.columns.message')) },
+            { title: t('admin.columns.status'), dataIndex: 'status', width: '22%', render: (value) => statusTag(value, t), onCell: mobileCellLabel(t('admin.columns.status')) },
+            { title: t('admin.columns.createdAt'), dataIndex: 'createdAt', width: '28%', render: dateTime, onCell: mobileCellLabel(t('admin.columns.createdAt')) },
           ]}
         />
       </DataSection>
-      <DataSection title="Hesap İstekleri">
+      <DataSection title={t('admin.sections.billRequests')}>
         <Table
           className="history-table requests-history-table"
           size="middle"
@@ -764,10 +805,10 @@ function RequestsHistory({ loading, waiterCalls, billRequests }) {
           loading={loading}
           dataSource={billRequests}
           columns={[
-            { title: 'Masa', dataIndex: 'tableNumber', width: '16%', onCell: mobileCellLabel('Masa') },
-            { title: 'Not', dataIndex: 'note', width: '34%', render: (value) => value || '-', onCell: mobileCellLabel('Not') },
-            { title: 'Durum', dataIndex: 'status', width: '22%', render: statusTag, onCell: mobileCellLabel('Durum') },
-            { title: 'Oluşturuldu', dataIndex: 'createdAt', width: '28%', render: dateTime, onCell: mobileCellLabel('Oluşturuldu') },
+            { title: t('admin.columns.table'), dataIndex: 'tableNumber', width: '16%', onCell: mobileCellLabel(t('admin.columns.table')) },
+            { title: t('admin.columns.note'), dataIndex: 'note', width: '34%', render: (value) => value || '-', onCell: mobileCellLabel(t('admin.columns.note')) },
+            { title: t('admin.columns.status'), dataIndex: 'status', width: '22%', render: (value) => statusTag(value, t), onCell: mobileCellLabel(t('admin.columns.status')) },
+            { title: t('admin.columns.createdAt'), dataIndex: 'createdAt', width: '28%', render: dateTime, onCell: mobileCellLabel(t('admin.columns.createdAt')) },
           ]}
         />
       </DataSection>
@@ -775,33 +816,34 @@ function RequestsHistory({ loading, waiterCalls, billRequests }) {
   );
 }
 
-function FeedbackSection({ loading, feedbacks }) {
+function FeedbackSection({ t, loading, feedbacks }) {
   return (
     <div className="feedback-admin-grid">
       <div className="feedback-summary-grid">
-        <Card className="metric-card"><Statistic title="Genel" value={average(feedbacks, 'overallRating')} precision={1} prefix={<StarOutlined />} /></Card>
-        <Card className="metric-card"><Statistic title="Yemek" value={average(feedbacks, 'foodRating')} precision={1} prefix={<StarOutlined />} /></Card>
-        <Card className="metric-card"><Statistic title="Servis" value={average(feedbacks, 'serviceRating')} precision={1} prefix={<StarOutlined />} /></Card>
-        <Card className="metric-card"><Statistic title="Hız" value={average(feedbacks, 'speedRating')} precision={1} prefix={<StarOutlined />} /></Card>
-        <Card className="metric-card"><Statistic title="Temizlik" value={average(feedbacks, 'cleanlinessRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title={t('admin.columns.overall')} value={average(feedbacks, 'overallRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title={t('admin.columns.food')} value={average(feedbacks, 'foodRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title={t('admin.columns.service')} value={average(feedbacks, 'serviceRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title={t('admin.columns.speed')} value={average(feedbacks, 'speedRating')} precision={1} prefix={<StarOutlined />} /></Card>
+        <Card className="metric-card"><Statistic title={t('admin.columns.cleanliness')} value={average(feedbacks, 'cleanlinessRating')} precision={1} prefix={<StarOutlined />} /></Card>
       </div>
-      <DataSection title="Müşteri Puanları">
+      <DataSection title={t('admin.sections.customerRatings')}>
         <Table
+          className="admin-data-table feedbacks-table"
           size="middle"
           scroll={{ x: 900 }}
           rowKey="id"
           loading={loading}
           dataSource={feedbacks}
           columns={[
-            { title: 'Masa', dataIndex: 'tableNumber' },
-            { title: 'Sipariş', dataIndex: 'orderId', render: (value) => `#${value}` },
-            { title: 'Genel', dataIndex: 'overallRating', render: ratingStars },
-            { title: 'Yemek', dataIndex: 'foodRating', render: ratingStars },
-            { title: 'Servis', dataIndex: 'serviceRating', render: ratingStars },
-            { title: 'Hız', dataIndex: 'speedRating', render: ratingStars },
-            { title: 'Temizlik', dataIndex: 'cleanlinessRating', render: ratingStars },
-            { title: 'Yorum', dataIndex: 'comment', render: (value) => value || '-' },
-            { title: 'Tarih', dataIndex: 'createdAt', render: dateTime },
+            { title: t('admin.columns.table'), dataIndex: 'tableNumber', onCell: mobileCellLabel(t('admin.columns.table')) },
+            { title: t('admin.columns.order'), dataIndex: 'orderId', render: (value) => `#${value}`, onCell: mobileCellLabel(t('admin.columns.order')) },
+            { title: t('admin.columns.overall'), dataIndex: 'overallRating', render: ratingStars, onCell: mobileCellLabel(t('admin.columns.overall')) },
+            { title: t('admin.columns.food'), dataIndex: 'foodRating', render: ratingStars, onCell: mobileCellLabel(t('admin.columns.food')) },
+            { title: t('admin.columns.service'), dataIndex: 'serviceRating', render: ratingStars, onCell: mobileCellLabel(t('admin.columns.service')) },
+            { title: t('admin.columns.speed'), dataIndex: 'speedRating', render: ratingStars, onCell: mobileCellLabel(t('admin.columns.speed')) },
+            { title: t('admin.columns.cleanliness'), dataIndex: 'cleanlinessRating', render: ratingStars, onCell: mobileCellLabel(t('admin.columns.cleanliness')) },
+            { title: t('admin.columns.comment'), dataIndex: 'comment', render: (value) => value || '-', onCell: mobileCellLabel(t('admin.columns.comment')) },
+            { title: t('admin.columns.date'), dataIndex: 'createdAt', render: dateTime, onCell: mobileCellLabel(t('admin.columns.date')) },
           ]}
         />
       </DataSection>
@@ -810,11 +852,13 @@ function FeedbackSection({ loading, feedbacks }) {
 }
 
 function DataSection({ title, onAdd, children }) {
+  const { t } = usePreferences();
+
   return (
     <Card
       className="section-card"
       title={title}
-      extra={onAdd && <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>Ekle</Button>}
+      extra={onAdd && <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>{t('admin.actions.add')}</Button>}
     >
       {children}
     </Card>
@@ -825,106 +869,132 @@ function mobileCellLabel(label) {
   return () => ({ 'data-label': label });
 }
 
-function RestaurantFields() {
+function adminNotificationText(notification, t) {
+  const byType = {
+    ORDER_CREATED: ['admin.messages.newOrderTitle', 'admin.messages.newOrderMessage'],
+    WAITER_CALL_CREATED: ['admin.messages.waiterCallTitle', 'admin.messages.waiterCallMessage'],
+    BILL_REQUEST_CREATED: ['admin.messages.billRequestTitle', 'admin.messages.billRequestMessage'],
+    FEEDBACK_CREATED: ['admin.messages.feedbackTitle', 'admin.messages.feedbackMessage'],
+  };
+  const [titleKey, messageKey] = byType[notification.type] || [];
+  if (!titleKey || !messageKey) {
+    return {
+      title: notification.title,
+      message: notification.message,
+    };
+  }
+
+  return {
+    title: t(titleKey),
+    message: `${t('admin.columns.table')} ${notification.tableNumber} ${t(messageKey)}`,
+  };
+}
+
+function RestaurantFields({ t }) {
   return (
     <>
-      <Form.Item name="name" label="Restoran Adı" rules={[{ required: true, message: 'Restoran adı zorunlu' }]}>
+      <Form.Item name="name" label={t('admin.forms.restaurantName')} rules={[{ required: true, message: t('admin.forms.required.restaurantName') }]}>
         <Input />
       </Form.Item>
-      <Form.Item name="phone" label="Telefon">
+      <Form.Item name="phone" label={t('admin.forms.phone')}>
         <Input />
       </Form.Item>
-      <Form.Item name="address" label="Adres">
+      <Form.Item name="address" label={t('admin.forms.address')}>
         <Input.TextArea rows={3} />
       </Form.Item>
-      <Form.Item name="active" label="Aktif" valuePropName="checked">
+      <Form.Item name="active" label={t('admin.columns.active')} valuePropName="checked">
         <Switch />
       </Form.Item>
     </>
   );
 }
 
-function TableFields() {
+function TableFields({ t }) {
   return (
     <>
-      <Form.Item name="tableNumber" label="Masa Numarası" rules={[{ required: true, message: 'Masa numarası zorunlu' }]}>
+      <Form.Item name="tableNumber" label={t('admin.forms.tableNumber')} rules={[{ required: true, message: t('admin.forms.required.tableNumber') }]}>
         <InputNumber min={1} className="full-width" />
       </Form.Item>
-      <Form.Item name="active" label="Aktif" valuePropName="checked">
+      <Form.Item name="active" label={t('admin.columns.active')} valuePropName="checked">
         <Switch />
       </Form.Item>
     </>
   );
 }
 
-function CategoryFields() {
+function CategoryFields({ t }) {
   return (
     <>
-      <Form.Item name="name" label="Kategori Adı" rules={[{ required: true, message: 'Kategori adı zorunlu' }]}>
+      <Form.Item name="name" label={t('admin.forms.categoryName')} rules={[{ required: true, message: t('admin.forms.required.categoryName') }]}>
         <Input />
       </Form.Item>
-      <Form.Item name="description" label="Açıklama">
+      <Form.Item name="description" label={t('admin.columns.description')}>
         <Input.TextArea rows={3} />
       </Form.Item>
-      <Form.Item name="sortOrder" label="Sıra">
-        <InputNumber min={0} className="full-width" />
-      </Form.Item>
-      <Form.Item name="active" label="Aktif" valuePropName="checked">
+      <Form.Item name="active" label={t('admin.columns.active')} valuePropName="checked">
         <Switch />
       </Form.Item>
     </>
   );
 }
 
-function ProductFields({ categories }) {
+function ProductFields({ t, categories }) {
+  const categoryOptions = categories
+    .map((category) => ({ label: category.name, value: category.id }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+
   return (
     <>
-      <Form.Item name="categoryId" label="Kategori" rules={[{ required: true, message: 'Kategori zorunlu' }]}>
-        <Select options={categories.map((category) => ({ label: category.name, value: category.id }))} />
+      <Form.Item name="categoryId" label={t('admin.columns.category')} rules={[{ required: true, message: t('admin.forms.required.category') }]}>
+        <Select
+          showSearch
+          optionFilterProp="label"
+          placeholder={t('admin.forms.categoryPlaceholder')}
+          disabled={categoryOptions.length === 0}
+          notFoundContent={t('admin.forms.categoryNotFound')}
+          options={categoryOptions}
+        />
       </Form.Item>
-      <Form.Item name="name" label="Ürün Adı" rules={[{ required: true, message: 'Ürün adı zorunlu' }]}>
+      <Form.Item name="name" label={t('admin.forms.productName')} rules={[{ required: true, message: t('admin.forms.required.productName') }]}>
         <Input />
       </Form.Item>
-      <Form.Item name="description" label="Açıklama">
+      <Form.Item name="description" label={t('admin.columns.description')}>
         <Input.TextArea rows={3} />
       </Form.Item>
-      <Form.Item name="price" label="Fiyat" rules={[{ required: true, message: 'Fiyat zorunlu' }]}>
+      <Form.Item name="price" label={t('admin.columns.price')} rules={[{ required: true, message: t('admin.forms.required.price') }]}>
         <InputNumber min={0.01} step={1} className="full-width" />
       </Form.Item>
-      <Form.Item name="imageUrl" label="Görsel URL">
+      <Form.Item name="imageUrl" label={t('admin.forms.imageUrl')}>
         <Input />
       </Form.Item>
-      <Form.Item name="sortOrder" label="Sıra">
-        <InputNumber min={0} className="full-width" />
-      </Form.Item>
-      <Form.Item name="available" label="Satışta" valuePropName="checked">
+      <Form.Item name="available" label={t('admin.columns.available')} valuePropName="checked">
         <Switch />
       </Form.Item>
     </>
   );
 }
 
-function UserFields({ isEditing }) {
+function UserFields({ t, isEditing }) {
   return (
     <>
-      <Form.Item name="fullName" label="Ad Soyad" rules={[{ required: true, message: 'Ad soyad zorunlu' }]}>
+      <Form.Item name="fullName" label={t('admin.columns.fullName')} rules={[{ required: true, message: t('admin.forms.required.fullName') }]}>
         <Input />
       </Form.Item>
-      <Form.Item name="email" label="E-posta" rules={[{ required: true, message: 'E-posta zorunlu' }, { type: 'email', message: 'Geçerli e-posta girin' }]}>
+      <Form.Item name="email" label={t('admin.columns.email')} rules={[{ required: true, message: t('admin.forms.required.email') }, { type: 'email', message: t('admin.forms.required.validEmail') }]}>
         <Input />
       </Form.Item>
       <Form.Item
         name="password"
-        label="Parola"
-        extra={isEditing ? 'Boş bırakırsanız mevcut parola korunur.' : undefined}
-        rules={isEditing ? [] : [{ required: true, message: 'Kaydetmek için parola girin' }]}
+        label={t('admin.forms.password')}
+        extra={isEditing ? t('admin.forms.passwordKeep') : undefined}
+        rules={isEditing ? [] : [{ required: true, message: t('admin.forms.required.password') }]}
       >
         <Input.Password />
       </Form.Item>
-      <Form.Item name="role" label="Rol" rules={[{ required: true, message: 'Rol zorunlu' }]}>
-        <Select options={[{ label: 'Yönetici', value: 'ADMIN' }, { label: 'Personel', value: 'STAFF' }]} />
+      <Form.Item name="role" label={t('admin.columns.role')} rules={[{ required: true, message: t('admin.forms.required.role') }]}>
+        <Select options={[{ label: t('admin.states.admin'), value: 'ADMIN' }, { label: t('admin.states.staff'), value: 'STAFF' }]} />
       </Form.Item>
-      <Form.Item name="active" label="Aktif" valuePropName="checked">
+      <Form.Item name="active" label={t('admin.columns.active')} valuePropName="checked">
         <Switch />
       </Form.Item>
     </>
@@ -945,26 +1015,20 @@ function ratingStars(value) {
 function defaultsFor(type) {
   const defaults = {
     table: { active: true },
-    category: { active: true, sortOrder: 0 },
-    product: { available: true, sortOrder: 0 },
+    category: { active: true },
+    product: { available: true },
     user: { active: true, role: 'STAFF' },
   };
   return defaults[type] || {};
 }
 
-function modalTitle(type, record) {
-  const names = {
-    restaurant: 'Restoran',
-    table: 'Masa',
-    category: 'Kategori',
-    product: 'Ürün',
-    user: 'Kullanıcı',
-  };
-  return `${names[type] || ''} ${record ? 'Düzenle' : 'Ekle'}`;
-}
+function modalTitle(type, record, t) {
+  if (!type) {
+    return '';
+  }
 
-function option(value) {
-  return { label: statusLabel(value), value };
+  const name = t(`admin.modalNames.${type}`);
+  return `${name || ''} ${record ? t('admin.actions.edit') : t('admin.actions.add')}`;
 }
 
 function createQrPdf({ imageDataUrl, title, subtitle, url }) {
@@ -1055,19 +1119,19 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-function activeTag(value) {
-  return <Tag color={value ? 'green' : 'red'}>{value ? 'Aktif' : 'Pasif'}</Tag>;
+function activeTag(value, t) {
+  return <Tag color={value ? 'green' : 'red'}>{value ? t('admin.states.active') : t('admin.states.inactive')}</Tag>;
 }
 
-function roleTag(value) {
-  return <Tag icon={<TeamOutlined />} color={value === 'ADMIN' ? 'purple' : 'geekblue'}>{value === 'ADMIN' ? 'Yönetici' : 'Personel'}</Tag>;
+function roleTag(value, t) {
+  return <Tag icon={<TeamOutlined />} color={value === 'ADMIN' ? 'purple' : 'geekblue'}>{roleLabel(value, t)}</Tag>;
 }
 
-function roleLabel(value) {
-  return value === 'ADMIN' ? 'Yönetici' : 'Personel';
+function roleLabel(value, t) {
+  return value === 'ADMIN' ? t('admin.states.admin') : t('admin.states.staff');
 }
 
-function statusTag(value) {
+function statusTag(value, t) {
   const colors = {
     OPEN: 'orange',
     PENDING: 'orange',
@@ -1079,22 +1143,12 @@ function statusTag(value) {
     PAID: 'green',
     CANCELLED: 'red',
   };
-  return <Tag color={colors[value] || 'default'}>{statusLabel(value)}</Tag>;
+  return <Tag color={colors[value] || 'default'}>{statusLabel(value, t)}</Tag>;
 }
 
-function statusLabel(value) {
-  const labels = {
-    OPEN: 'Açık',
-    PENDING: 'Yeni',
-    IN_PROGRESS: 'İşlemde',
-    PREPARING: 'Hazırlanıyor',
-    READY: 'Hazır',
-    SERVED: 'Servis Edildi',
-    COMPLETED: 'Tamamlandı',
-    PAID: 'Ödendi',
-    CANCELLED: 'İptal',
-  };
-  return labels[value] || value;
+function statusLabel(value, t) {
+  const label = t(`admin.states.${value}`);
+  return label === `admin.states.${value}` ? value : label;
 }
 
 export default AdminDashboard;

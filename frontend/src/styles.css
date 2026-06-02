@@ -741,10 +741,12 @@ textarea,
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
+  scrollbar-width: thin;
 }
 
 .mobile-admin-menu .ant-menu-overflow {
   flex-wrap: nowrap;
+  min-width: max-content;
 }
 
 .mobile-admin-menu .ant-menu-item {
@@ -753,9 +755,9 @@ textarea,
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(118px, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .metric-card,
@@ -798,8 +800,20 @@ textarea,
 
 .feedback-summary-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
   gap: 12px;
+}
+
+.admin-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.admin-filter-select {
+  min-width: 220px;
 }
 
 .order-detail {
@@ -985,11 +999,11 @@ textarea,
 
 @media (max-width: 1200px) {
   .stats-grid {
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   }
 
   .feedback-summary-grid {
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   }
 }
 
@@ -1071,14 +1085,20 @@ textarea,
   }
 
   .visual-product-grid,
-  .order-track-list,
-  .stats-grid {
+  .order-track-list {
     grid-template-columns: 1fr;
   }
 
-  .feedback-rating-grid,
-  .feedback-summary-grid {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .feedback-rating-grid {
     grid-template-columns: 1fr;
+  }
+
+  .feedback-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .floating-cart-button {
@@ -1258,16 +1278,27 @@ textarea,
     margin-bottom: 10px;
   }
 
+  .feedback-admin-grid,
+  .feedback-summary-grid {
+    gap: 8px;
+  }
+
   .metric-card .ant-card-body {
-    padding: 12px;
+    padding: 9px;
   }
 
   .metric-card .ant-statistic-title {
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.2;
   }
 
   .metric-card .ant-statistic-content {
-    font-size: 20px;
+    font-size: 18px;
+    line-height: 1.15;
+  }
+
+  .metric-card .ant-statistic-content-prefix {
+    margin-inline-end: 5px;
   }
 
   .section-card .ant-card-head {
@@ -1281,6 +1312,15 @@ textarea,
 
   .section-card .ant-card-body {
     padding: 12px;
+  }
+
+  .admin-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-filter-select {
+    width: 100%;
   }
 
   .mobile-admin-menu {
@@ -1301,13 +1341,26 @@ textarea,
 
   .request-card .ant-card-body {
     min-height: 0;
-    padding: 14px;
+    gap: 6px;
+    padding: 10px;
   }
 
   .request-card h4,
   .kitchen-card h3 {
-    font-size: 20px;
+    font-size: 16px;
     line-height: 1.2;
+  }
+
+  .request-actions,
+  .kitchen-actions {
+    gap: 6px;
+  }
+
+  .request-actions .ant-btn,
+  .kitchen-actions .ant-btn {
+    height: 30px;
+    padding-inline: 8px;
+    font-size: 12px;
   }
 
   .kitchen-card {
@@ -1316,21 +1369,32 @@ textarea,
 
   .kitchen-card .ant-card-body {
     min-height: 0;
-    padding: 14px;
+    padding: 10px;
+  }
+
+  .kitchen-card-head {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .kitchen-card-head .ant-typography {
+    font-size: 12px;
+  }
+
+  .kitchen-items {
+    gap: 6px;
+    margin-bottom: 10px;
   }
 
   .kitchen-item {
     grid-template-columns: 38px minmax(0, 1fr);
-    padding: 8px;
+    gap: 6px;
+    padding: 7px;
+    font-size: 12px;
   }
 
   .kitchen-item .ant-typography {
     grid-column: 2;
-  }
-
-  .request-actions .ant-btn,
-  .kitchen-actions .ant-btn {
-    flex: 1 1 100%;
   }
 
   .ant-table-wrapper {
@@ -1346,6 +1410,10 @@ textarea,
     padding: 8px !important;
   }
 
+  .admin-data-table .ant-table,
+  .admin-data-table .ant-table-container,
+  .admin-data-table .ant-table-content,
+  .admin-data-table table,
   .history-table .ant-table,
   .history-table .ant-table-container,
   .history-table .ant-table-content,
@@ -1359,11 +1427,14 @@ textarea,
     min-width: 0 !important;
   }
 
+  .admin-data-table .ant-table-thead,
   .history-table .ant-table-thead,
   .order-items-table .ant-table-thead {
     display: none;
   }
 
+  .admin-data-table .ant-table-tbody,
+  .admin-data-table .ant-table-row,
   .history-table .ant-table-tbody,
   .history-table .ant-table-row,
   .order-items-table .ant-table-tbody,
@@ -1372,6 +1443,7 @@ textarea,
     width: 100%;
   }
 
+  .admin-data-table .ant-table-row,
   .history-table .ant-table-row,
   .order-items-table .ant-table-row {
     gap: 8px;
@@ -1382,6 +1454,7 @@ textarea,
     background: #fff;
   }
 
+  .admin-data-table .ant-table-cell,
   .history-table .ant-table-cell,
   .order-items-table .ant-table-cell {
     display: grid;
@@ -1393,6 +1466,7 @@ textarea,
     border-bottom: 0 !important;
   }
 
+  .admin-data-table .ant-table-cell[data-label]::before,
   .history-table .ant-table-cell[data-label]::before,
   .order-items-table .ant-table-cell[data-label]::before {
     content: attr(data-label);
@@ -1401,6 +1475,34 @@ textarea,
     font-weight: 800;
     letter-spacing: 0;
     text-transform: uppercase;
+  }
+
+  .admin-data-table .ant-table-cell > *,
+  .history-table .ant-table-cell > *,
+  .order-items-table .ant-table-cell > * {
+    min-width: 0;
+  }
+
+  .admin-data-table .ant-table-cell .ant-space {
+    flex-wrap: wrap;
+  }
+
+  .admin-data-table .ant-table-cell .ant-typography {
+    overflow-wrap: anywhere;
+  }
+
+  .feedbacks-table .ant-table-cell {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .feedbacks-table .ant-rate {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .feedbacks-table .ant-rate-star {
+    margin-inline-end: 2px !important;
   }
 
   .orders-history-table .ant-table-row-expand-icon-cell {

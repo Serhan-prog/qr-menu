@@ -40,10 +40,10 @@ const { Content } = Layout;
 const { Text, Title } = Typography;
 
 const categoryImages = {
-  Başlangıçlar: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80',
+  'Başlangıçlar': 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80',
   'Ana Yemekler': 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=900&q=80',
-  İçecekler: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
-  Tatlılar: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=900&q=80',
+  'İçecekler': 'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80',
+  'Tatlılar': 'https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=900&q=80',
 };
 
 const statusSteps = [
@@ -177,7 +177,7 @@ function Menu() {
       syncStoredTrackingCodes(tableCode, freshOrders);
       setOrders(freshOrders);
     } catch {
-      // Polling sessiz kalır; ana işlemler message ile bildirilir.
+      // Polling should not interrupt the customer flow.
     }
   };
 
@@ -253,14 +253,14 @@ function Menu() {
       if (requestModal === 'waiter') {
         await qrMenuApi.createWaiterCall({
           tableCode,
-          message: requestNote.trim() || 'Müşteri garson çağırıyor',
+          message: requestNote.trim() || t('menu.defaultWaiterMessage'),
         });
         message.success(t('menu.waiterCalled'));
       }
       if (requestModal === 'bill') {
         await qrMenuApi.createBillRequest({
           tableCode,
-          note: requestNote.trim() || 'Müşteri hesap istiyor',
+          note: requestNote.trim() || t('menu.defaultBillMessage'),
         });
         message.success(t('menu.billSent'));
       }
@@ -425,7 +425,7 @@ function Menu() {
                     children: t(`status.${step.key}`),
                   }))}
                 />
-                {order.note && <Text className="order-customer-note"><strong>Sipariş notu:</strong> {order.note}</Text>}
+                {order.note && <Text className="order-customer-note"><strong>{t('menu.orderNote')}:</strong> {order.note}</Text>}
                 <List
                   size="small"
                   dataSource={order.items}
@@ -447,6 +447,7 @@ function Menu() {
                   <FeedbackCard
                     draft={feedbackDrafts[order.trackingCode] || defaultFeedbackDraft()}
                     loading={submittingFeedback === order.trackingCode}
+                    t={t}
                     onChange={(values) => updateFeedbackDraft(order.trackingCode, values)}
                     onSubmit={() => submitFeedback(order)}
                   />
@@ -518,7 +519,7 @@ function Menu() {
                     <strong>{currency(Number(item.price) * item.quantity)}</strong>
                   </div>
                   <div className="cart-line-controls">
-                    <Text strong>Adet</Text>
+                    <Text strong>{t('menu.quantity')}</Text>
                     <div className="quantity-control cart-quantity-control">
                       <Button icon={<MinusOutlined />} onClick={() => updateQuantity(item.productId, item.quantity - 1)} />
                       <InputNumber min={1} value={item.quantity} onChange={(value) => updateQuantity(item.productId, value || 1)} />
@@ -573,36 +574,25 @@ function orderProgress(status) {
   return map[status] || 0;
 }
 
-function statusLabel(status) {
-  const labels = {
-    PENDING: 'Alındı',
-    PREPARING: 'Hazırlanıyor',
-    READY: 'Hazır',
-    SERVED: 'Servis Edildi',
-    CANCELLED: 'İptal Edildi',
-  };
-  return labels[status] || status;
-}
-
 function statusColor(status) {
   const colors = { PENDING: 'orange', PREPARING: 'blue', READY: 'cyan', SERVED: 'green', CANCELLED: 'red' };
   return colors[status] || 'default';
 }
 
-function FeedbackCard({ draft, loading, onChange, onSubmit }) {
+function FeedbackCard({ draft, loading, t, onChange, onSubmit }) {
   const ratingFields = [
-    ['foodRating', 'Yemek kalitesi'],
-    ['serviceRating', 'Servis'],
-    ['speedRating', 'Hız'],
-    ['cleanlinessRating', 'Temizlik'],
-    ['overallRating', 'Genel memnuniyet'],
+    ['foodRating', t('menu.foodQuality')],
+    ['serviceRating', t('menu.service')],
+    ['speedRating', t('menu.speed')],
+    ['cleanlinessRating', t('menu.cleanliness')],
+    ['overallRating', t('menu.overallSatisfaction')],
   ];
 
   return (
     <div className="feedback-card">
       <div className="feedback-card-head">
-        <Title level={5}>Deneyiminizi puanlayın</Title>
-        <Text>Yıldızlar ve kısa notunuz hizmet kalitesini iyileştirmek için kullanılır.</Text>
+        <Title level={5}>{t('menu.rateExperience')}</Title>
+        <Text>{t('menu.rateDescription')}</Text>
       </div>
       <div className="feedback-rating-grid">
         {ratingFields.map(([key, label]) => (
@@ -615,12 +605,12 @@ function FeedbackCard({ draft, loading, onChange, onSubmit }) {
       <Input.TextArea
         maxLength={1000}
         rows={3}
-        placeholder="İsteğe bağlı yorumunuz"
+        placeholder={t('menu.optionalComment')}
         value={draft.comment}
         onChange={(event) => onChange({ comment: event.target.value })}
       />
       <Button type="primary" loading={loading} onClick={onSubmit}>
-        Puanımı Gönder
+        {t('menu.sendRating')}
       </Button>
     </div>
   );

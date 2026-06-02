@@ -21,6 +21,7 @@ public class FeedbackService {
     private final FeedbackRepository feedbackRepository;
     private final OrderRepository orderRepository;
     private final AuthContextService authContextService;
+    private final AdminNotificationService adminNotificationService;
 
     @Transactional(readOnly = true)
     public List<FeedbackResponse> findAll(Long restaurantId) {
@@ -54,7 +55,9 @@ public class FeedbackService {
         feedback.setCleanlinessRating(request.cleanlinessRating());
         feedback.setOverallRating(request.overallRating());
         feedback.setComment(normalizeComment(request.comment()));
-        return toResponse(feedbackRepository.save(feedback));
+        FeedbackResponse response = toResponse(feedbackRepository.save(feedback));
+        adminNotificationService.feedbackCreated(response);
+        return response;
     }
 
     private String normalizeComment(String comment) {

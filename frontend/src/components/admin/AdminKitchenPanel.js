@@ -1,18 +1,20 @@
 import { Button, Card, Col, Empty, Row, Space, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, FireOutlined } from '@ant-design/icons';
 import { currency, dateTime } from '../../utils/format.js';
+import { usePreferences } from '../../context/PreferencesContext.js';
 
 const { Text, Title } = Typography;
 
 const activeStatuses = ['PENDING', 'PREPARING', 'READY'];
 
 function AdminKitchenPanel({ orders, onStatusChange, onCancel }) {
+  const { t } = usePreferences();
   const visibleOrders = orders.filter((order) => activeStatuses.includes(order.status));
 
   if (visibleOrders.length === 0) {
     return (
       <div className="empty-panel">
-        <Empty description="Mutfakta aktif sipariş yok" />
+        <Empty description={t('admin.messages.emptyKitchen')} />
       </div>
     );
   }
@@ -20,17 +22,17 @@ function AdminKitchenPanel({ orders, onStatusChange, onCancel }) {
   return (
     <Row gutter={[16, 16]} className="responsive-row">
       {visibleOrders.map((order) => (
-        <Col xs={24} lg={12} xxl={8} key={order.id}>
+        <Col xs={24} md={12} xxl={8} key={order.id}>
           <Card className={`kitchen-card status-${order.status.toLowerCase()}`}>
             <div className="kitchen-card-head">
               <div>
-                <Title level={3}>Masa {order.tableNumber}</Title>
-                <Text>Sipariş #{order.id} - {dateTime(order.createdAt)}</Text>
+                <Title level={3}>{t('admin.columns.table')} {order.tableNumber}</Title>
+                <Text>{t('admin.columns.order')} #{order.id} - {dateTime(order.createdAt)}</Text>
               </div>
-              <Tag color={statusColor(order.status)}>{statusLabel(order.status)}</Tag>
+              <Tag color={statusColor(order.status)}>{statusLabel(order.status, t)}</Tag>
             </div>
 
-            {order.note && <Text className="kitchen-order-note"><strong>Sipariş notu:</strong> {order.note}</Text>}
+            {order.note && <Text className="kitchen-order-note"><strong>{t('admin.messages.orderNote')}:</strong> {order.note}</Text>}
             <div className="kitchen-items">
               {order.items.map((item) => (
                 <div className="kitchen-item" key={item.id}>
@@ -47,21 +49,21 @@ function AdminKitchenPanel({ orders, onStatusChange, onCancel }) {
             <Space className="kitchen-actions">
               {order.status === 'PENDING' && (
                 <Button type="primary" icon={<FireOutlined />} onClick={() => onStatusChange(order.id, 'PREPARING')}>
-                  Hazırlamaya Başla
+                  {t('admin.actions.startPreparing')}
                 </Button>
               )}
               {order.status === 'PREPARING' && (
                 <Button type="primary" icon={<ClockCircleOutlined />} onClick={() => onStatusChange(order.id, 'READY')}>
-                  Hazır
+                  {t('admin.actions.markReady')}
                 </Button>
               )}
               {order.status === 'READY' && (
                 <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => onStatusChange(order.id, 'SERVED')}>
-                  Servis Edildi
+                  {t('admin.actions.markServed')}
                 </Button>
               )}
               <Button danger icon={<CloseCircleOutlined />} onClick={() => onCancel(order)}>
-                Siparişi İptal Et
+                {t('admin.actions.cancelOrder')}
               </Button>
             </Space>
           </Card>
@@ -71,13 +73,9 @@ function AdminKitchenPanel({ orders, onStatusChange, onCancel }) {
   );
 }
 
-function statusLabel(status) {
-  const labels = {
-    PENDING: 'Yeni',
-    PREPARING: 'Hazırlanıyor',
-    READY: 'Hazır',
-  };
-  return labels[status] || status;
+function statusLabel(status, t) {
+  const label = t(`admin.states.${status}`);
+  return label === `admin.states.${status}` ? status : label;
 }
 
 function statusColor(status) {
