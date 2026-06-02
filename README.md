@@ -400,6 +400,7 @@ CSRF davranışı:
 - Bearer token ile gelen stateless istekler CSRF kontrolünden muaftır.
 - Cookie-only mutasyonlarda `XSRF-TOKEN` cookie ve `X-XSRF-TOKEN` header’ı kullanılır.
 - `/api/csrf` CSRF token üretir.
+- Logout sırasında hem `qr_menu_token` hem de `XSRF-TOKEN` cookie’leri temizlenir.
 - Public müşteri mutasyonları CSRF korumasından hariçtir: sipariş, feedback, garson çağrısı ve hesap isteği.
 
 Public endpointler `PUBLIC_RATE_LIMIT_PER_MINUTE` ile sınırlandırılır.

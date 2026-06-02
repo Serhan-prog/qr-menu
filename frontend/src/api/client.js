@@ -21,6 +21,10 @@ function readCookie(name) {
 
 let currentCsrfToken = null;
 
+function clearCsrfTokenCache() {
+  currentCsrfToken = null;
+}
+
 function csrfIgnoredPath(url = '') {
   const path = url.split('?')[0];
   return path === '/api/auth/login'
@@ -61,9 +65,15 @@ api.interceptors.request.use(async (config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config?.url === '/api/auth/logout') {
+      clearCsrfTokenCache();
+    }
+    return response;
+  },
   (error) => {
     if (error?.response?.status === 401) {
+      clearCsrfTokenCache();
       clearAuth();
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';

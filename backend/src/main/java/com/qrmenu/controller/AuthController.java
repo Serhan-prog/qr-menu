@@ -45,14 +45,22 @@ public class AuthController {
 
     @PostMapping("/logout")
     public void logout(HttpServletResponse response) {
-        ResponseCookie cookie = ResponseCookie.from("qr_menu_token", "")
+        ResponseCookie authCookie = ResponseCookie.from("qr_menu_token", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite(cookieSecure ? "None" : "Lax")
                 .path("/")
                 .maxAge(0)
                 .build();
-        response.addHeader("Set-Cookie", cookie.toString());
+        ResponseCookie csrfCookie = ResponseCookie.from("XSRF-TOKEN", "")
+                .httpOnly(false)
+                .secure(cookieSecure)
+                .sameSite(cookieSecure ? "None" : "Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader("Set-Cookie", authCookie.toString());
+        response.addHeader("Set-Cookie", csrfCookie.toString());
     }
 
     @GetMapping("/ws-ticket")
