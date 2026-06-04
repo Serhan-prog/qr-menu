@@ -457,7 +457,7 @@ SEED_ENABLED=true
 
 Seeder şunları oluşturur:
 
-- `Semua Restorant`
+- `QR Menü Restoranı`
 - 8 masa ve QR kodları
 - Başlangıç, ana yemek, içecek ve tatlı kategorileri
 - Örnek ürünler

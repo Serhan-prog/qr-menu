@@ -43,7 +43,7 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         Restaurant restaurant = new Restaurant();
-        restaurant.setName("Semua Restorant");
+        restaurant.setName("QR Menü Restoranı");
         restaurant.setAddress("İstanbul");
         restaurant.setPhone("05313632014");
         restaurant = restaurantRepository.save(restaurant);
@@ -102,8 +102,10 @@ public class DataSeeder implements CommandLineRunner {
 
     private void normalizeDemoTurkishData() {
         restaurantRepository.findAll().forEach(restaurant -> {
-            if ("Demo Restaurant".equals(restaurant.getName()) || "Demo Restoran".equals(restaurant.getName())) {
-                restaurant.setName("Semua Restorant");
+            if ("Demo Restaurant".equals(restaurant.getName())
+                    || "Demo Restoran".equals(restaurant.getName())
+                    || "Semua Restorant".equals(restaurant.getName())) {
+                restaurant.setName("QR Menü Restoranı");
                 restaurant.setAddress("İstanbul");
             }
         });

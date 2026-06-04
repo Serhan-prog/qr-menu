@@ -1,4 +1,4 @@
-export const DEFAULT_RESTAURANT_NAME = 'QR Menu';
+export const DEFAULT_RESTAURANT_NAME = 'QR Menü';
 
 export function restaurantDisplayName(name) {
   return name?.trim() || DEFAULT_RESTAURANT_NAME;

@@ -99,7 +99,7 @@ class SecurityAndOrderFlowTests {
         restaurantRepository.deleteAll();
 
         restaurant = new Restaurant();
-        restaurant.setName("Semua Restorant");
+        restaurant.setName("QR Menü Restoranı");
         restaurant = restaurantRepository.save(restaurant);
 
         table = new RestaurantTable();
@@ -142,7 +142,7 @@ class SecurityAndOrderFlowTests {
         mockMvc.perform(get("/api/restaurants/public"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(restaurant.getId()))
-                .andExpect(jsonPath("$.name").value("Semua Restorant"));
+                .andExpect(jsonPath("$.name").value("QR Menü Restoranı"));
     }
 
     @Test
@@ -238,7 +238,7 @@ class SecurityAndOrderFlowTests {
 
         mockMvc.perform(get("/api/restaurants/current").cookie(authCookie))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Semua Restorant"));
+                .andExpect(jsonPath("$.name").value("QR Menü Restoranı"));
 
         String orderBody = mockMvc.perform(post("/api/orders")
                         .contentType(MediaType.APPLICATION_JSON)
